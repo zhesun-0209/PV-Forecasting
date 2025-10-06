@@ -5,16 +5,26 @@ Uses GPU-accelerated versions for Random Forest and Gradient Boosting.
 import numpy as np
 import torch
 
+# Try to import cuML for GPU-accelerated Random Forest and Linear Regression
+GPU_RF_AVAILABLE = False
+GPU_LINEAR_AVAILABLE = False
+
 try:
+    import cuml
     from cuml.ensemble import RandomForestRegressor as cuRandomForestRegressor
-    from cuml.linear_model import LinearRegression as cuLinearRegression
-    GPU_AVAILABLE = True
-    print("cuML RandomForestRegressor and LinearRegression available")  # cuML RandomForestRegressor and LinearRegression available
-except ImportError:
+    GPU_RF_AVAILABLE = True
+    print("cuML Random Forest available (GPU)")
+except Exception as e:
+    print(f"cuML Random Forest not available: {e}")
     from sklearn.ensemble import RandomForestRegressor as cuRandomForestRegressor
+
+try:
+    from cuml.linear_model import LinearRegression as cuLinearRegression
+    GPU_LINEAR_AVAILABLE = True
+    print("cuML Linear Regression available (GPU)")
+except Exception as e:
+    print(f"cuML Linear Regression not available: {e}")
     from sklearn.linear_model import LinearRegression as cuLinearRegression
-    GPU_AVAILABLE = False
-    print("Warning: cuML not available, falling back to CPU versions")
 
 # Check XGBoost GPU support
 XGB_GPU_AVAILABLE = False
@@ -82,17 +92,17 @@ def train_rf(X_train, y_train, params: dict):
         }
         
         # Try GPU version first (cuML), fallback to CPU (sklearn)
-        if GPU_AVAILABLE:
+        from sklearn.multioutput import MultiOutputRegressor
+        
+        if GPU_RF_AVAILABLE:
             print("Using Random Forest GPU version (cuML)")
-            from sklearn.multioutput import MultiOutputRegressor
             base = cuRandomForestRegressor(**rf_params)
-            model = MultiOutputRegressor(base)
         else:
-            print("cuML not available, using sklearn CPU version")
+            print("Using Random Forest CPU version (sklearn)")
             from sklearn.ensemble import RandomForestRegressor
-            from sklearn.multioutput import MultiOutputRegressor
             base = RandomForestRegressor(**rf_params)
-            model = MultiOutputRegressor(base)
+        
+        model = MultiOutputRegressor(base)
         
         model.fit(X_train, y_train)
         return model
@@ -179,17 +189,16 @@ def train_linear(X_train, y_train, params: dict):
                 print("Detected NaN or Inf values, cleaning")  # Detected NaN or Inf values, cleaning
                 y_train = np.nan_to_num(y_train, nan=0.0, posinf=1.0, neginf=-1.0)
             
-            if GPU_AVAILABLE:
-                # Use cuML GPU version
+            if GPU_LINEAR_AVAILABLE:
+                print("Using Linear Regression GPU version (cuML)")
                 model = cuLinearRegression()
-                model.fit(X_train, y_train)
-                return model
             else:
-                # Use sklearn CPU version
+                print("Using Linear Regression CPU version (sklearn)")
                 from sklearn.linear_model import LinearRegression
                 model = LinearRegression()
-                model.fit(X_train, y_train)
-                return model
+            
+            model.fit(X_train, y_train)
+            return model
         except Exception as e:
             print(f"Linear Regression training failed: {e}")  # Linear Regression training failed: {e}
             raise RuntimeError(f"Linear Regression training failed: {e}")
