@@ -10,18 +10,29 @@ from models.ml_models import train_rf, train_xgb, train_lgbm, train_linear
 
 def train_ml_model(
     config: dict,
-    Xh_train: np.ndarray,
-    Xf_train: np.ndarray,
-    y_train: np.ndarray,
-    Xh_test: np.ndarray,
-    Xf_test: np.ndarray,
-    y_test: np.ndarray,
-    dates_test: list,
-    scaler_target=None
+    train_data: tuple,
+    val_data: tuple,
+    test_data: tuple,
+    scalers: tuple
 ):
     """
     Train a traditional ML model and evaluate on the test set.
+    
+    Args:
+        config: dict with model config
+        train_data: (Xh_train, Xf_train, y_train, hrs_train, dates_train)
+        val_data: (Xh_val, Xf_val, y_val, hrs_val, dates_val)  # 不使用但保持接口一致
+        test_data: (Xh_test, Xf_test, y_test, hrs_test, dates_test)
+        scalers: (scaler_hist, scaler_fcst, scaler_target)
+    
+    Returns:
+        model: trained model
+        metrics: dict with evaluation metrics
     """
+    # 解包数据，与DL模型保持一致的接口
+    Xh_train, Xf_train, y_train, _, _ = train_data
+    Xh_test, Xf_test, y_test, _, dates_test = test_data
+    _, _, scaler_target = scalers
 
     def flatten(Xh, Xf):
         """

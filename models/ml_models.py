@@ -3,6 +3,8 @@ Machine learning regressors with config-driven parameters.
 Uses GPU-accelerated versions for Random Forest and Gradient Boosting.
 """
 import numpy as np
+import torch  # 添加torch导入用于GPU检测
+
 try:
     from cuml.ensemble import RandomForestRegressor as cuRandomForestRegressor
     from cuml.linear_model import LinearRegression as cuLinearRegression
