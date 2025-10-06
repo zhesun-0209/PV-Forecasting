@@ -89,21 +89,37 @@ def train_rf(X_train, y_train, params: dict):
             'random_state': 42
         }
         
-        # Try GPU version first (cuML), fallback to CPU (sklearn)
+        # Try GPU version with cuDF conversion
+        if GPU_RF_AVAILABLE:
+            try:
+                import cudf
+                import cupy as cp
+                from sklearn.multioutput import MultiOutputRegressor
+                
+                print("Using Random Forest GPU (cuML)")
+                
+                # Convert to cuDF for cuML (key step!)
+                X_cudf = cudf.DataFrame(X_train)
+                y_cudf = cudf.DataFrame(y_train)
+                
+                base = cuRandomForestRegressor(**rf_params)
+                model = MultiOutputRegressor(base)
+                model.fit(X_cudf, y_cudf)
+                return model
+            except Exception as e:
+                print(f"cuML GPU failed ({e}), falling back to sklearn CPU")
+                # Fall through to CPU version
+        
+        # CPU version (sklearn)
+        print("Using Random Forest CPU (sklearn)")
+        from sklearn.ensemble import RandomForestRegressor
         from sklearn.multioutput import MultiOutputRegressor
         
-        if GPU_RF_AVAILABLE:
-            print("Using Random Forest GPU version (cuML)")
-            base = cuRandomForestRegressor(**rf_params)
-        else:
-            print("Using Random Forest CPU version (sklearn)")
-            from sklearn.ensemble import RandomForestRegressor
-            base = RandomForestRegressor(**rf_params)
-        
+        base = RandomForestRegressor(**rf_params)
         model = MultiOutputRegressor(base)
-        
         model.fit(X_train, y_train)
         return model
+        
     except Exception as e:
         print(f"Random Forest training failed: {e}")
         raise RuntimeError(f"Random Forest training failed: {e}")
@@ -177,26 +193,41 @@ def train_lgbm(X_train, y_train, params: dict):
 
 def train_linear(X_train, y_train, params: dict):
     """Train Linear Regression with GPU support if available."""
-    with gpu_lock:  # Ensure exclusive GPU resource access
+    with gpu_lock:
         try:
             # Check data validity
             if np.any(np.isnan(X_train)) or np.any(np.isinf(X_train)):
-                print("Detected NaN or Inf values, cleaning")  # Detected NaN or Inf values, cleaning
+                print("Detected NaN or Inf values, cleaning")
                 X_train = np.nan_to_num(X_train, nan=0.0, posinf=1.0, neginf=-1.0)
             if np.any(np.isnan(y_train)) or np.any(np.isinf(y_train)):
-                print("Detected NaN or Inf values, cleaning")  # Detected NaN or Inf values, cleaning
+                print("Detected NaN or Inf values, cleaning")
                 y_train = np.nan_to_num(y_train, nan=0.0, posinf=1.0, neginf=-1.0)
             
+            # Try GPU version with cuDF conversion
             if GPU_LINEAR_AVAILABLE:
-                print("Using Linear Regression GPU version (cuML)")
-                model = cuLinearRegression()
-            else:
-                print("Using Linear Regression CPU version (sklearn)")
-                from sklearn.linear_model import LinearRegression
-                model = LinearRegression()
+                try:
+                    import cudf
+                    
+                    print("Using Linear Regression GPU (cuML)")
+                    
+                    # Convert to cuDF for cuML (key step!)
+                    X_cudf = cudf.DataFrame(X_train)
+                    y_cudf = cudf.DataFrame(y_train)
+                    
+                    model = cuLinearRegression()
+                    model.fit(X_cudf, y_cudf)
+                    return model
+                except Exception as e:
+                    print(f"cuML GPU failed ({e}), falling back to sklearn CPU")
+                    # Fall through to CPU version
             
+            # CPU version (sklearn)
+            print("Using Linear Regression CPU (sklearn)")
+            from sklearn.linear_model import LinearRegression
+            model = LinearRegression()
             model.fit(X_train, y_train)
             return model
+            
         except Exception as e:
-            print(f"Linear Regression training failed: {e}")  # Linear Regression training failed: {e}
+            print(f"Linear Regression training failed: {e}")
             raise RuntimeError(f"Linear Regression training failed: {e}")
