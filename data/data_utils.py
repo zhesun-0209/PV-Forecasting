@@ -181,13 +181,15 @@ def preprocess_features(df: pd.DataFrame, config: dict):
 
 def create_sliding_windows(df, past_hours, future_hours, hist_feats, fcst_feats, no_hist_power=False):
     """
+    Create sliding window sequences for time series data
     
     Args:
-        past_hours:
-        future_hours:
-        hist_feats:
-        fcst_feats:
-        no_hist_power:
+        df: Preprocessed dataframe
+        past_hours: Historical time window (hours)
+        future_hours: Prediction time window (hours)
+        hist_feats: List of historical features
+        fcst_feats: List of forecast features
+        no_hist_power: If True, don't use historical power data, only use forecast weather
     """
     X_hist, y, hours, dates = [], [], [], []
     X_fcst = [] if fcst_feats else None
@@ -239,7 +241,7 @@ def create_sliding_windows(df, past_hours, future_hours, hist_feats, fcst_feats,
             dates.append(fut_data['Datetime'].iloc[-1])
     
     if len(X_hist) == 0:
-        raise ValueError(
+        raise ValueError("Unable to create any valid samples")
     
     X_hist = np.array(X_hist)
     y = np.array(y)
@@ -251,6 +253,7 @@ def create_sliding_windows(df, past_hours, future_hours, hist_feats, fcst_feats,
 
 def split_data(X_hist, X_fcst, y, hours, dates, train_ratio=0.8, val_ratio=0.1, shuffle=True, random_state=42):
     """
+    Split data into train, validation and test sets
     """
     N = X_hist.shape[0]
     

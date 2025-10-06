@@ -20,15 +20,31 @@ sys.path.append(script_dir)
 
 from data.data_utils import preprocess_features, create_sliding_windows
 from train.train_dl import train_dl_model
+from train.train_ml import train_ml_model
 
 def generate_all_configs():
-    """Generate all 160 experiment configurations"""
+    """
+    Generate all experiment configurations
+    
+    Total experiments:
+    - DL models (LSTM, GRU, Transformer, TCN): 4 models
+    - ML models (RF, XGB, LGBM, Linear): 4 models
+    - Complexities: 2 (low, high)
+    - PV experiments: 4 feature combos x 2 lookbacks x 2 TE options = 16 per model-complexity
+    - NWP experiments: 2 feature combos x 2 TE options = 4 per model-complexity
+    
+    Total: 8 models x 2 complexities x (16 + 4) = 320 experiments
+    """
     
     configs = []
     script_dir = os.path.dirname(os.path.abspath(__file__))
     data_path = os.path.join(script_dir, "data", "Project1140.csv")
     
-    models = ['LSTM', 'GRU', 'Transformer', 'TCN']
+    # DL models: 4 models x 2 complexities = 8 configs
+    # ML models: 4 models (RF, XGB, LGBM, Linear) x 2 complexities = 8 configs  
+    # Total: 16 model configs
+    dl_models = ['LSTM', 'GRU', 'Transformer', 'TCN']
+    ml_models = ['RF', 'XGB', 'LGBM', 'Linear']
     complexities = ['low', 'high']
     
     lookbacks = [24, 72]
@@ -40,7 +56,20 @@ def generate_all_configs():
     ]
     te_options = [True, False]
     
-    for model in models:
+    # DL models experiments
+    for model in dl_models:
+        for complexity in complexities:
+            for lookback in lookbacks:
+                for feat_combo in feature_combos_pv:
+                    for use_te in te_options:
+                        config = create_config(
+                            data_path, model, complexity, lookback, 
+                            feat_combo, use_te, False  # is_nwp_only=False
+                        )
+                        configs.append(config)
+    
+    # ML models experiments  
+    for model in ml_models:
         for complexity in complexities:
             for lookback in lookbacks:
                 for feat_combo in feature_combos_pv:
@@ -56,7 +85,19 @@ def generate_all_configs():
         {'name': 'NWP+', 'use_pv': False, 'use_hist_weather': False, 'use_forecast': True, 'use_ideal_nwp': True},
     ]
     
-    for model in models:
+    # DL models for NWP-only experiments
+    for model in dl_models:
+        for complexity in complexities:
+            for feat_combo in feature_combos_nwp:
+                for use_te in te_options:
+                    config = create_config(
+                        data_path, model, complexity, 0,  # lookback=0 for NWP
+                        feat_combo, use_te, True  # is_nwp_only=True
+                    )
+                    configs.append(config)
+    
+    # ML models for NWP-only experiments
+    for model in ml_models:
         for complexity in complexities:
             for feat_combo in feature_combos_nwp:
                 for use_te in te_options:
@@ -103,52 +144,74 @@ def create_config(data_path, model, complexity, lookback, feat_combo, use_te, is
         config['no_hist_power'] = False
         feat_name = f"{feat_combo['name']}_{lookback}h"
     
-    if complexity == 'low':
-        config.update({
-            'train_ratio': 0.8,
-            'val_ratio': 0.1,
-            'test_ratio': 0.1,
-            'train_params': {
-                'epochs': 20,
-                'batch_size': 64,
-                'learning_rate': 0.001,
-                'patience': 10,
-                'min_delta': 0.001,
-                'weight_decay': 1e-4
-            },
-            'model_params': {
-                'd_model': 16,
-                'hidden_dim': 8,
-                'num_heads': 2,
-                'num_layers': 1,
-                'dropout': 0.1,
-                'tcn_channels': [8, 16],
-                'kernel_size': 3
-            }
-        })
+    # Common data split ratios
+    config.update({
+        'train_ratio': 0.8,
+        'val_ratio': 0.1,
+        'test_ratio': 0.1,
+    })
+    
+    # Model-specific parameters
+    if model in ['LSTM', 'GRU', 'Transformer', 'TCN']:
+        # DL model parameters
+        if complexity == 'low':
+            config.update({
+                'train_params': {
+                    'epochs': 20,
+                    'batch_size': 64,
+                    'learning_rate': 0.001,
+                    'patience': 10,
+                    'min_delta': 0.001,
+                    'weight_decay': 1e-4
+                },
+                'model_params': {
+                    'd_model': 16,
+                    'hidden_dim': 8,
+                    'num_heads': 2,
+                    'num_layers': 1,
+                    'dropout': 0.1,
+                    'tcn_channels': [8, 16],
+                    'kernel_size': 3
+                }
+            })
+        else:  # high complexity
+            config.update({
+                'train_params': {
+                    'epochs': 50,
+                    'batch_size': 64,
+                    'learning_rate': 0.001,
+                    'patience': 10,
+                    'min_delta': 0.001,
+                    'weight_decay': 1e-4
+                },
+                'model_params': {
+                    'd_model': 32,
+                    'hidden_dim': 16,
+                    'num_heads': 2,
+                    'num_layers': 2,
+                    'dropout': 0.1,
+                    'tcn_channels': [16, 32],
+                    'kernel_size': 3
+                }
+            })
     else:
-        config.update({
-            'train_ratio': 0.8,
-            'val_ratio': 0.1,
-            'test_ratio': 0.1,
-            'train_params': {
-                'epochs': 50,
-                'batch_size': 64,
-                'learning_rate': 0.001,
-                'patience': 10,
-                'min_delta': 0.001,
-                'weight_decay': 1e-4
-            },
-            'model_params': {
-                'd_model': 32,
-                'hidden_dim': 16,
-                'num_heads': 2,
-                'num_layers': 2,
-                'dropout': 0.1,
-                'tcn_channels': [16, 32],
-                'kernel_size': 3
+        # ML model parameters (RF, XGB, LGBM, Linear)
+        if complexity == 'low':
+            config['model_params'] = {
+                'n_estimators': 50,
+                'max_depth': 5,
+                'learning_rate': 0.1,
+                'random_state': 42,
+                'verbosity': 0
             }
-        })
+        else:  # high complexity
+            config['model_params'] = {
+                'n_estimators': 200,
+                'max_depth': 15,
+                'learning_rate': 0.05,
+                'random_state': 42,
+                'verbosity': 0
+            }
     
     te_suffix = 'TE' if use_te else 'noTE'
     config['experiment_name'] = f"{model}_{complexity}_{feat_name}_{te_suffix}"
@@ -230,7 +293,13 @@ def run_all_experiments():
             test_data = (X_hist_test, X_fcst_test, y_test, test_hours, test_dates)
             scalers = (scaler_hist, scaler_fcst, scaler_target)
             
-            model, metrics = train_dl_model(config, train_data, val_data, test_data, scalers)
+            # Choose training function based on model type
+            if config['model'] in ['LSTM', 'GRU', 'Transformer', 'TCN']:
+                model, metrics = train_dl_model(config, train_data, val_data, test_data, scalers)
+            elif config['model'] in ['RF', 'XGB', 'LGBM', 'Linear']:
+                model, metrics = train_ml_model(config, train_data, val_data, test_data, scalers)
+            else:
+                raise ValueError(f"Unknown model type: {config['model']}")
             
             training_time = time.time() - start_time
             
