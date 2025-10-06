@@ -60,6 +60,7 @@ temp/
 tmp/
 *.log
 *.txt
+!requirements.txt
 
 # Model checkpoints
 *.pt
