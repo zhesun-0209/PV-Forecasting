@@ -79,6 +79,7 @@ pip install -r requirements.txt
 
 # For Colab: Fix cuML dependencies for full GPU support
 python install_cuml_colab.py
+python fix_cuda_libs.py
 
 # Run all 284 experiments
 python run_all_experiments.py
