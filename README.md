@@ -61,14 +61,31 @@ PV-Forecasting/
 
 ```bash
 pip install -r requirements.txt
+
+# Optional: Install cuML for GPU-accelerated Random Forest (Linux/Colab)
+pip install cuml-cu11
 ```
 
 ### Run Experiments
 
+**Local / Colab:**
 ```bash
+# Clone the repository
+git clone https://github.com/zhesun-0209/PV-Forecasting.git
+cd PV-Forecasting
+
+# Install dependencies
+pip install -r requirements.txt
+
 # Run all 284 experiments
 python run_all_experiments.py
 ```
+
+**GPU Acceleration:**
+- All DL models (LSTM, GRU, Transformer, TCN) automatically use GPU if available
+- XGBoost and LightGBM automatically use GPU if available
+- Random Forest uses GPU if cuML is installed (recommended for Colab)
+- Linear Regression uses GPU if cuML is installed
 
 ## 📊 Feature Definitions
 

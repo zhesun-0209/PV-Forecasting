@@ -65,32 +65,39 @@ import threading
 gpu_lock = threading.Lock()
 
 def train_rf(X_train, y_train, params: dict):
-    """Train Random Forest regressor with multi-output support - CPU fallback."""
-    # Use CPU version of Random Forest as cuML is difficult to install on Windows
-    from sklearn.ensemble import RandomForestRegressor
-    from sklearn.multioutput import MultiOutputRegressor
-    
+    """Train Random Forest regressor with GPU support via cuML."""
     try:
         # Check data validity
         if np.any(np.isnan(X_train)) or np.any(np.isinf(X_train)):
-            print("Detected NaN or Inf values, cleaning")  # Detected NaN or Inf values, cleaning
+            print("Detected NaN or Inf values, cleaning")
             X_train = np.nan_to_num(X_train, nan=0.0, posinf=1.0, neginf=-1.0)
         if np.any(np.isnan(y_train)) or np.any(np.isinf(y_train)):
-            print("Detected NaN or Inf values, cleaning")  # Detected NaN or Inf values, cleaning
+            print("Detected NaN or Inf values, cleaning")
             y_train = np.nan_to_num(y_train, nan=0.0, posinf=1.0, neginf=-1.0)
         
-        # Use sklearn Random Forest CPU version
         rf_params = {
             'n_estimators': params.get('n_estimators', 100),
             'max_depth': params.get('max_depth', 10),
             'random_state': 42
         }
-        base = RandomForestRegressor(**rf_params)
-        model = MultiOutputRegressor(base)
+        
+        # Try GPU version first (cuML), fallback to CPU (sklearn)
+        if GPU_AVAILABLE:
+            print("Using Random Forest GPU version (cuML)")
+            from sklearn.multioutput import MultiOutputRegressor
+            base = cuRandomForestRegressor(**rf_params)
+            model = MultiOutputRegressor(base)
+        else:
+            print("cuML not available, using sklearn CPU version")
+            from sklearn.ensemble import RandomForestRegressor
+            from sklearn.multioutput import MultiOutputRegressor
+            base = RandomForestRegressor(**rf_params)
+            model = MultiOutputRegressor(base)
+        
         model.fit(X_train, y_train)
         return model
     except Exception as e:
-        print(f"Random Forest training failed: {e}")  # Random Forest training failed: {e}
+        print(f"Random Forest training failed: {e}")
         raise RuntimeError(f"Random Forest training failed: {e}")
 
 # GBR removed, use XGBoost and LightGBM instead
