@@ -8,7 +8,6 @@ import os
 import pandas as pd
 import numpy as np
 from eval.excel_utils import save_plant_excel_results
-from sklearn.metrics import mean_squared_error, mean_absolute_error
 
 # ===== Define Deep Learning model names =====
 DL_MODELS = {"Transformer", "LSTM", "GRU", "TCN"}
@@ -39,21 +38,16 @@ def save_results(
     save_dir = config['save_dir']
     os.makedirs(save_dir, exist_ok=True)
 
-    # Extract predictions and ground truth
+    # Extract predictions and ground truth (already computed in metrics)
     preds = metrics['predictions']
     yts   = metrics['y_true']
-
-
-    test_mse = np.mean((preds - yts) ** 2)
-    test_rmse = np.sqrt(test_mse)
-    test_mae = np.mean(np.abs(preds - yts))
     
-    y_mean = np.mean(yts)
-    ss_tot = np.sum((yts - y_mean) ** 2)
-    ss_res = np.sum((yts - preds) ** 2)
-    r_square = 1 - (ss_res / ss_tot) if ss_tot > 0 else 0
+    # Use pre-computed metrics instead of recalculating
+    test_mse = metrics['mse']
+    test_rmse = metrics['rmse']
+    test_mae = metrics['mae']
+    r_square = metrics['r_square']
     
-
     save_options = config.get('save_options', {})
     
     summary = {

@@ -11,8 +11,6 @@ import time
 import os
 import torch
 import numpy as np
-import pandas as pd
-from collections import defaultdict
 from torch.utils.data import DataLoader, TensorDataset
 from train.train_utils import (
     get_optimizer, get_scheduler,
@@ -38,10 +36,6 @@ def train_dl_model(
         model:   trained PyTorch model
         metrics: dict with inverse-transformed predictions, loss, etc.
     """
-    print(f"[DEBUG] train_dl_model starts execution")
-    print(f"[DEBUG] config['model'] = {config.get('model', 'NOT_FOUND')}")
-    print(f"[DEBUG] config['train_params'] = {config.get('train_params', 'NOT_FOUND')}")
-    print(f"[DEBUG] config['model_params'] = {config.get('model_params', 'NOT_FOUND')}")
     # Unpack data
     Xh_tr, Xf_tr, y_tr, hrs_tr, _ = train_data
     Xh_va, Xf_va, y_va, hrs_va, _ = val_data
@@ -96,9 +90,7 @@ def train_dl_model(
     model.to(device)
 
     # Training utils
-    print(f"[DEBUG] config['train_params'] = {config['train_params']}")
     train_params = config['train_params']
-    print(f"[DEBUG] train_params = {train_params}")
     opt = get_optimizer(
         model,
         lr=float(train_params['learning_rate']),

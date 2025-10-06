@@ -122,6 +122,12 @@ def generate_all_configs():
             )
             configs.append(config)
     
+    print(f"\nConfiguration summary:")
+    print(f"  DL models (LSTM, GRU, Transformer, TCN): {4 * 2 * (16 + 4)} experiments")
+    print(f"  ML models (RF, XGB, LGBM): {3 * 2 * (16 + 4)} experiments")
+    print(f"  Linear model: 4 experiments")
+    print(f"  Total: {len(configs)} experiments")
+    
     return configs
 
 def create_config(data_path, model, complexity, lookback, feat_combo, use_te, is_nwp_only):
@@ -244,11 +250,15 @@ def create_config(data_path, model, complexity, lookback, feat_combo, use_te, is
     return config
 
 def run_all_experiments():
-    
+    """
+    Run all 284 experiments and save results to CSV
+    """
     print("="*80)
+    print("PV Forecasting: Running 284 Experiments")
     print("="*80)
     
     all_configs = generate_all_configs()
+    print(f"Total configurations generated: {len(all_configs)}")
     
     import torch
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -270,9 +280,12 @@ def run_all_experiments():
     ])
     results_df.to_csv(output_file, index=False, encoding='utf-8-sig')
     
+    total_experiments = len(all_configs)
+    
     for idx, config in enumerate(all_configs, 1):
         exp_name = config['experiment_name']
         print(f"\n{'='*80}")
+        print(f"Experiment {idx}/{total_experiments}: {exp_name}")
         print(f"{'='*80}")
         
         try:
@@ -355,6 +368,10 @@ def run_all_experiments():
             result_df.to_csv(output_file, mode='a', header=False, index=False, encoding='utf-8-sig')
             
         except Exception as e:
+            print(f"  [ERROR] {exp_name} failed: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            
             result = {
                 'experiment_name': exp_name,
                 'model': config['model'],
@@ -378,15 +395,25 @@ def run_all_experiments():
     
     if results:
         print(f"\n{'='*80}")
+        print("All Experiments Completed!")
+        print(f"Results saved to: {output_file}")
         print(f"{'='*80}")
         
         final_df = pd.read_csv(output_file)
+        successful = final_df[final_df['rmse'].notna()]
+        failed = final_df[final_df['rmse'].isna()]
         
+        print(f"\nSummary:")
+        print(f"  Total: {len(final_df)} experiments")
+        print(f"  Successful: {len(successful)}")
+        print(f"  Failed: {len(failed)}")
         
-        print(f"\n{'='*80}")
-        print(f"{'='*80}")
-        top_10 = final_df.nsmallest(10, 'rmse')[['experiment_name', 'rmse', 'mae']]
-        print(top_10.to_string(index=False))
+        if len(successful) > 0:
+            print(f"\n{'='*80}")
+            print("Top 10 Best Results (by RMSE):")
+            print(f"{'='*80}")
+            top_10 = successful.nsmallest(10, 'rmse')[['experiment_name', 'rmse', 'mae', 'r2']]
+            print(top_10.to_string(index=False))
         
         return True
     else:

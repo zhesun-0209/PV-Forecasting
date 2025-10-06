@@ -1,154 +1,163 @@
 # PV-Forecasting
 
-光伏发电功率预测系统 - 基于深度学习和机器学习的多模型对比研究
+Solar photovoltaic power forecasting system - Multi-model comparison study based on deep learning and machine learning
 
-## 📋 项目简介
+## 📋 Project Overview
 
-本项目实现了多种机器学习和深度学习模型用于太阳能光伏发电功率预测，包括传统机器学习模型（Random Forest, XGBoost, LightGBM, CatBoost）和深度学习模型（LSTM, GRU, Transformer, TCN）。
+This project implements various machine learning and deep learning models for solar PV power forecasting, including traditional ML models (Random Forest, XGBoost, LightGBM, Linear Regression) and deep learning models (LSTM, GRU, Transformer, TCN).
 
-## 🎯 主要特性
+## 🎯 Key Features
 
-- **多模型支持**: LSTM, GRU, Transformer, TCN, Random Forest, XGBoost等
-- **特征工程**: 支持历史功率、历史天气、预测天气等多种特征组合
-- **自动化实验**: 支持批量实验配置和自动运行
-- **完整评估**: 提供RMSE, MAE, R2等多种评估指标
+- **Multi-Model Support**: 8 models including LSTM, GRU, Transformer, TCN, RF, XGBoost, LightGBM, Linear Regression
+- **Feature Engineering**: Historical power (PV), historical weather (HW), numerical weather prediction (NWP), actual weather (NWP+)
+- **Automated Experiments**: 284 experiments with batch configuration and execution
+- **Comprehensive Evaluation**: RMSE, MAE, R², NRMSE, sMAPE metrics
 
-## 📁 项目结构
+## 📁 Project Structure
 
 ```
 PV-Forecasting/
-├── data/                   # 数据处理模块
-│   ├── data_utils.py      # 数据预处理、特征工程
-│   └── Project1140.csv    # 原始数据集
+├── data/                   # Data processing module
+│   ├── data_utils.py      # Preprocessing, feature engineering
+│   └── Project1140.csv    # Raw dataset
 │
-├── models/                 # 模型定义
-│   ├── ml_models.py       # 机器学习模型
-│   ├── rnn_models.py      # RNN模型 (LSTM, GRU)
-│   ├── transformer.py     # Transformer模型
-│   └── tcn.py             # TCN模型
+├── models/                 # Model definitions
+│   ├── ml_models.py       # ML models (RF, XGB, LGBM, Linear)
+│   ├── rnn_models.py      # RNN models (LSTM, GRU)
+│   ├── transformer.py     # Transformer model
+│   └── tcn.py             # TCN model
 │
-├── train/                  # 训练模块
-│   ├── train_dl.py        # 深度学习训练
-│   ├── train_ml.py        # 机器学习训练
-│   └── train_utils.py     # 训练工具
+├── train/                  # Training module
+│   ├── train_dl.py        # DL training pipeline
+│   ├── train_ml.py        # ML training pipeline
+│   └── train_utils.py     # Training utilities
 │
-├── eval/                   # 评估模块
-│   ├── eval_utils.py      # 评估工具
-│   ├── excel_utils.py     # Excel导出
-│   └── metrics_utils.py   # 指标计算
+├── eval/                   # Evaluation module
+│   ├── eval_utils.py      # Evaluation utilities
+│   ├── excel_utils.py     # Excel export
+│   └── metrics_utils.py   # Metrics calculation
 │
-├── utils/                  # 工具模块
-│   └── gpu_utils.py       # GPU工具
+├── utils/                  # Utilities
+│   └── gpu_utils.py       # GPU utilities
 │
-├── config/                 # 配置文件
-│   └── projects/1140/     # 项目配置
+├── config/                 # Configuration files
+│   ├── ablation/          # Ablation study configs (229 files)
+│   └── projects/1140/     # Project configs (285 files)
 │
-├── run_all_experiments.py  # 主实验脚本
-├── requirements.txt        # 依赖文件
-└── README.md              # 本文件
+├── run_all_experiments.py  # Main experiment script
+├── requirements.txt        # Python dependencies
+└── README.md              # This file
 ```
 
-## 🚀 快速开始
+## 🚀 Quick Start
 
-### 环境要求
+### Requirements
 
 - Python 3.8+
 - PyTorch 2.0+
-- CUDA (可选，用于GPU加速)
+- CUDA (optional, for GPU acceleration)
 
-### 安装依赖
+### Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 运行实验
+### Run Experiments
 
 ```bash
-# 运行所有实验（160次）
+# Run all 284 experiments
 python run_all_experiments.py
 ```
 
-## 📊 特征定义
+## 📊 Feature Definitions
 
-- **PV**: 历史光伏功率数据
-- **HW**: 历史天气数据（温度、湿度、辐照度等）
-- **NWP**: 数值天气预报数据（预测天气）
-- **NWP+**: 实际天气数据（理想场景）
+- **PV**: Historical photovoltaic power data
+- **HW**: Historical weather data (temperature, humidity, irradiance, etc.)
+- **NWP**: Numerical weather prediction (forecast weather)
+- **NWP+**: Actual weather data (ideal scenario)
 
-## 🔧 模型配置
+## 🔧 Model Configurations
 
-### 支持的模型
+### Supported Models
 
-**深度学习模型：**
+**Deep Learning Models:**
 - LSTM (Long Short-Term Memory)
 - GRU (Gated Recurrent Unit)
 - Transformer
 - TCN (Temporal Convolutional Network)
 
-**机器学习模型：**
+**Machine Learning Models:**
 - Random Forest
 - XGBoost
 - LightGBM
-- CatBoost
+- Linear Regression
 
-### 复杂度配置
+### Complexity Levels
 
-- **Low Complexity**: 适合快速实验和资源受限场景
-- **High Complexity**: 适合追求更高精度
+- **Low Complexity**: Fast experiments, limited resources
+- **High Complexity**: Higher accuracy, more resources
+- **Linear Model**: No complexity parameter (single configuration)
 
-## 📈 实验配置
+## 📈 Experiment Design
 
-项目支持以下实验变量：
-- 模型类型：8种（4种DL × 2复杂度）
-- 特征组合：10种
-- Lookback时长：24小时 / 72小时
-- 时间编码：启用/禁用
+Total experiments: **284**
 
-总实验次数：**160次**
+**Breakdown:**
+- DL models (LSTM, GRU, Transformer, TCN): 4 × 40 = 160
+- ML models (RF, XGB, LGBM): 3 × 40 = 120
+- Linear model: 4 (NWP/NWP+ with TE options)
 
-## 🎓 主要发现
+**Feature Combinations:**
+1. PV (historical power only)
+2. PV + HW (historical power + historical weather)
+3. PV + NWP (historical power + forecast weather)
+4. PV + NWP+ (historical power + actual weather)
+5. NWP (forecast weather only)
+6. NWP+ (actual weather only)
 
-1. **LSTM表现最佳**: 在PV+NWP场景下RMSE达到6.01
-2. **特征组合重要**: PV+NWP组合优于单一特征
-3. **NWP vs NWP+**: 预测天气有时优于实际天气（平滑性优势）
-4. **模型选择**: 对于中小规模数据，RNN优于Transformer/TCN
+**Variables:**
+- Lookback windows: 24h, 72h (not applicable for NWP-only and Linear)
+- Time encoding: Enabled / Disabled
+- Model complexity: Low / High (not applicable for Linear)
 
-详细分析请参考项目文档。
+## 🎓 Key Findings
 
-## 📖 文档
+1. **LSTM performs best**: RMSE of 6.01 in PV+NWP scenario
+2. **Feature combination matters**: PV+NWP outperforms single features
+3. **NWP vs NWP+**: Forecast weather sometimes outperforms actual weather (smoothness advantage)
+4. **Model selection**: For medium-scale data, RNNs outperform Transformer/TCN
 
-- `PROJECT_STRUCTURE.md` - 详细项目结构说明
-- `corrected_improvement_strategy.md` - 模型优化策略
-- `CLEANUP_REPORT.md` - 代码清理报告
+## 📖 Documentation
 
-## 🔬 研究背景
+All code is documented in English with clear comments and docstrings.
 
-本项目用于太阳能光伏发电功率预测研究，旨在对比不同模型和特征组合在光伏预测任务中的表现，为实际应用提供参考。
+## 🔬 Research Background
 
-## 📝 引用
+This project is designed for solar PV power forecasting research, comparing different models and feature combinations to provide practical references.
 
-如果您使用本项目代码，请引用：
+## 📝 Citation
+
+If you use this code, please cite:
 
 ```
 @misc{pv-forecasting-2025,
   title={PV-Forecasting: A Multi-Model Comparison for Solar Power Prediction},
-  author={Your Name},
+  author={Zhe Sun},
   year={2025},
   publisher={GitHub},
   url={https://github.com/zhesun-0209/PV-Forecasting}
 }
 ```
 
-## 📧 联系方式
+## 📧 Contact
 
-如有问题或建议，请提交Issue或Pull Request。
+For questions or suggestions, please submit an Issue or Pull Request.
 
-## 📄 许可证
+## 📄 License
 
 MIT License
 
 ---
 
-**注意**: 数据文件`Project1140.csv`较大，已包含在项目中。如需使用自己的数据，请参考数据格式说明。
-
+**Note**: The dataset `Project1140.csv` is included in the project. To use your own data, please refer to the data format specifications in the code.
