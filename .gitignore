@@ -44,16 +44,12 @@ outputs/
 logs/
 *.xlsx
 *.csv
+!data/Project1140.csv
 *.png
 *.jpg
 *.jpeg
 *.gif
 *.pdf
-
-# Project specific - Data (keep structure, ignore large data files)
-# Uncomment if data files are too large
-# data/*.csv
-# data/*.parquet
 
 # Temporary files
 temp/
