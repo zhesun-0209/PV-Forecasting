@@ -77,12 +77,12 @@ cd PV-Forecasting
 # Install dependencies
 pip install -r requirements.txt
 
-# For Colab: Fix cuML dependencies for full GPU support
+# For Colab: Install cuML for full GPU support
 python install_cuml_colab.py
-python fix_cuda_libs.py
 
-# Run all 284 experiments
-python run_all_experiments.py
+# Run all 284 experiments with GPU
+python run_colab.py
+# OR: python run_all_experiments.py (if cuML setup fails, auto fallback to CPU)
 ```
 
 **GPU Acceleration:**
