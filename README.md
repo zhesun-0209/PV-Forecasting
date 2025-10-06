@@ -80,9 +80,11 @@ pip install -r requirements.txt
 # For Colab: Install cuML for full GPU support
 python install_cuml_colab.py
 
-# Run all 284 experiments with GPU
-python run_colab.py
-# OR: python run_all_experiments.py (if cuML setup fails, auto fallback to CPU)
+# Run experiments with CUDA-enabled Python wrapper
+/tmp/python_with_cuda.sh run_all_experiments.py
+
+# OR if cuML fails, use regular Python (6/8 models still use GPU)
+python run_all_experiments.py
 ```
 
 **GPU Acceleration:**
