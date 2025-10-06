@@ -1,0 +1,36 @@
+data_path: ./Project1140.csv
+end_date: '2024-09-28'
+epoch_params:
+  high: 1
+  low: 1
+future_hours: 24
+input_category: NWP_only
+model: LSR
+model_complexity: low
+model_params:
+  high:
+    fit_intercept: true
+  low:
+    fit_intercept: true
+past_hours: 0
+plot_days: 7
+save_dir: ./results/ablation
+save_options:
+  save_excel_results: true
+  save_model: false
+  save_predictions: true
+  save_summary: true
+  save_training_log: false
+start_date: '2022-01-01'
+train_params:
+  batch_size: 32
+  future_hours: 24
+  learning_rate: 0.0005
+  loss_type: mse
+train_ratio: 0.8
+use_forecast: true
+use_hist_weather: false
+use_pv: false
+use_time_encoding: false
+val_ratio: 0.1
+weather_category: ablation_11_features

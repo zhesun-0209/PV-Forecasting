@@ -1,0 +1,43 @@
+data_path: data/Project1140.csv
+end_date: '2024-09-28'
+epoch_params:
+  high: 80
+  low: 50
+epochs: 80
+future_hours: 24
+model: LSTM
+model_complexity: high
+model_params:
+  high:
+    d_model: 128
+    dropout: 0.3
+    hidden_dim: 64
+    num_heads: 8
+    num_layers: 6
+  low:
+    d_model: 32
+    dropout: 0.1
+    hidden_dim: 16
+    num_heads: 2
+    num_layers: 2
+past_days: 3
+past_hours: 72
+plot_days: 7
+save_dir: temp_results/1140/LSTM_high_PV_72h_noTE
+save_options:
+  save_excel_results: false
+  save_model: false
+  save_predictions: false
+  save_summary: false
+  save_training_log: false
+start_date: '2022-01-01'
+train_params:
+  batch_size: 48
+  learning_rate: 0.0008
+train_ratio: 0.85
+use_forecast: false
+use_hist_weather: false
+use_pv: true
+use_time_encoding: false
+val_ratio: 0.1
+weather_category: none
