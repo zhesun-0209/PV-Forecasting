@@ -46,7 +46,7 @@ else:
 # Clean previous installations
 print(f"\n[3] Cleaning previous installations...")
 subprocess.run([sys.executable, "-m", "pip", "uninstall", "-y", "-q", 
-                "cuml-cu11", "cuml-cu12"], capture_output=True)
+                "cuml-cu11", "cuml-cu12", "cupy-cuda11x", "cupy-cuda12x"], capture_output=True)
 
 # Install matching cuML
 print(f"\n[4] Installing {cuml_package}...")
