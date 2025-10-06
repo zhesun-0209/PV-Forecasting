@@ -38,7 +38,7 @@ def train_dl_model(
         model:   trained PyTorch model
         metrics: dict with inverse-transformed predictions, loss, etc.
     """
-    print(f"[DEBUG] train_dl_model开始执行")  # [DEBUG] train_dl_model starts execution
+    print(f"[DEBUG] train_dl_model starts execution")
     print(f"[DEBUG] config['model'] = {config.get('model', 'NOT_FOUND')}")
     print(f"[DEBUG] config['train_params'] = {config.get('train_params', 'NOT_FOUND')}")
     print(f"[DEBUG] config['model_params'] = {config.get('model_params', 'NOT_FOUND')}")
@@ -59,19 +59,19 @@ def train_dl_model(
         tensors.append(torch.tensor(y, dtype=torch.float32))
         return DataLoader(TensorDataset(*tensors), batch_size=bs, shuffle=shuffle)
 
-    # 增加batch size以解决周期性问题 | Increase batch size to resolve periodicity issues
-    bs = max(int(config['train_params']['batch_size']), 64)  # 至少使用64的batch size | Use at least batch size of 64
+    # Increase batch size to resolve periodicity issues
+    bs = max(int(config['train_params']['batch_size']), 64)  # Use at least batch size of 64
     train_loader = make_loader(Xh_tr, Xf_tr, y_tr, hrs_tr, bs, shuffle=True)
     val_loader   = make_loader(Xh_va, Xf_va, y_va, hrs_va, bs)
     test_loader  = make_loader(Xh_te, Xf_te, y_te, hrs_te, bs)
 
     # Model setup
-    # 根据模型复杂度获取正确的模型参数 | Get correct model parameters based on model complexity
+    # Get correct model parameters based on model complexity
     complexity = config.get('model_complexity', 'low')
     if complexity in config['model_params']:
         mp = config['model_params'][complexity].copy()
     else:
-        # 如果没有复杂度级别的参数，使用默认参数 | Use default parameters if no complexity level parameters
+        # Use default parameters if no complexity level parameters
         mp = config.get('model_params', {}).copy()
     
     mp['use_forecast'] = config.get('use_forecast', False)
@@ -106,7 +106,7 @@ def train_dl_model(
     )
     sched = get_scheduler(opt, train_params)
     
-    # 使用配置中的epochs | Use epochs from config
+    # Use epochs from config
     epochs = train_params.get('epochs', 40)
 
     mse_fn = torch.nn.MSELoss()
@@ -115,7 +115,7 @@ def train_dl_model(
     total_train_time = 0.0
     total_inference_time = 0.0
     
-    # 早停机制 | Early stopping mechanism
+    # Early stopping mechanism
     best_val_loss = float('inf')
     patience = train_params.get('patience', 10)
     patience_counter = 0
@@ -141,7 +141,7 @@ def train_dl_model(
 
             opt.zero_grad()
             loss.backward()
-            # 梯度裁剪 - 解决周期性问题 | Gradient clipping - resolve periodicity issues
+            # Gradient clipping - resolve periodicity issues
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             opt.step()
             train_loss += loss.item()
@@ -168,9 +168,9 @@ def train_dl_model(
                 val_loss += mse_fn(preds, yb).item()
 
         val_loss /= len(val_loader)
-        sched.step(val_loss)  # ReduceLROnPlateau需要传入验证损失 | ReduceLROnPlateau requires validation loss
+        sched.step(val_loss)  # ReduceLROnPlateau requires validation loss
         
-        # 早停检查（使用min_delta） | Early stopping check (using min_delta)
+        # Early stopping check (using min_delta)
         if val_loss < (best_val_loss - min_delta):
             best_val_loss = val_loss
             patience_counter = 0
@@ -189,9 +189,9 @@ def train_dl_model(
             'cum_time': total_time
         })
         
-        # 早停 | Early stopping
+        # Early stopping
         if patience_counter >= patience:
-            print(f"早停于第 {ep} 轮，验证损失: {val_loss:.4f}")  # Early stopped at epoch {ep}, val loss: {val_loss:.4f}
+            print(f"Early stopped at epoch {ep}, val loss: {val_loss:.4f}")
             break
 
     # Test phase
@@ -215,7 +215,7 @@ def train_dl_model(
     preds_arr = np.vstack(all_preds)
     y_true_arr = y_te  # already numpy
 
-    # 使用scaler_target进行逆变换 | Inverse transform using scaler_target
+    # Inverse transform using scaler_target
     if scaler_target is not None:
         p_inv = scaler_target.inverse_transform(preds_arr.reshape(-1, 1)).flatten()
         y_inv = scaler_target.inverse_transform(y_true_arr.reshape(-1, 1)).flatten()
@@ -223,37 +223,37 @@ def train_dl_model(
         p_inv = preds_arr.flatten()
         y_inv = y_true_arr.flatten()
     
-    # 裁剪预测值到合理范围[0, 100]（容量因子百分比） | Clip predictions to reasonable range [0, 100] (capacity factor percentage)
+    # Clip predictions to reasonable range [0, 100] (capacity factor percentage)
     p_inv = np.clip(p_inv, 0, 100)
 
-    # === 计算所有评估指标 === | Calculate all evaluation metrics
-    # 重要：使用逆变换后的真实值计算指标（容量因子百分比，0-100） | Important: Calculate metrics using inverse-transformed values (capacity factor percentage, 0-100)
-    # 将逆变换后的数据reshape回原始形状 | Reshape inverse-transformed data back to original shape
+    # Calculate all evaluation metrics
+    # Important: Calculate metrics using inverse-transformed values (capacity factor percentage, 0-100)
+    # Reshape inverse-transformed data back to original shape
     p_inv_matrix = p_inv.reshape(y_te.shape)
     y_inv_matrix = y_inv.reshape(y_te.shape)
     
-    # 计算MSE（基于逆变换后的真实值） | Calculate MSE (based on inverse-transformed values)
+    # Calculate MSE (based on inverse-transformed values)
     raw_mse = calculate_mse(y_inv_matrix, p_inv_matrix)
     
-    # 计算所有指标（基于逆变换后的真实值） | Calculate all metrics (based on inverse-transformed values)
+    # Calculate all metrics (based on inverse-transformed values)
     all_metrics = calculate_metrics(y_inv_matrix, p_inv_matrix)
     
-    # 提取基本指标 | Extract basic metrics
+    # Extract basic metrics
     raw_rmse = all_metrics['rmse']
     raw_mae = all_metrics['mae']
 
-    # 根据配置决定是否保存模型 | Decide whether to save model based on config
+    # Decide whether to save model based on config
     save_options = config.get('save_options', {})
     if save_options.get('save_model', False):
         save_dir = config['save_dir']
         os.makedirs(save_dir, exist_ok=True)
         torch.save(model.state_dict(), os.path.join(save_dir, 'model.pth'))
 
-    # 获取最佳epoch和最终学习率 | Get best epoch and final learning rate
+    # Get best epoch and final learning rate
     best_epoch = min(logs, key=lambda x: x['val_loss'])['epoch'] if logs else 1
     final_lr = opt.param_groups[0]['lr']
     
-    # 获取GPU内存使用量 | Get GPU memory usage
+    # Get GPU memory usage
     gpu_memory_used = get_gpu_memory_used()
     
     metrics = {
@@ -262,7 +262,7 @@ def train_dl_model(
         'mae': raw_mae,
         'nrmse': all_metrics['nrmse'],
         'r_square': all_metrics['r_square'],
-        'r2': all_metrics['r2'],  # 添加r2别名
+        'r2': all_metrics['r2'],
         'smape': all_metrics['smape'],
         'best_epoch': best_epoch,
         'final_lr': final_lr,

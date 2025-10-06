@@ -21,7 +21,7 @@ class PositionalEncoding(nn.Module):
         return x + self.pe[:, :x.size(1)]
 
 class Transformer(nn.Module):
-    """PV forecasting Transformer model - 使用正确的简单Encoder-only架构 | PV forecasting Transformer model - using correct simple Encoder-only architecture"""
+    PV forecasting Transformer model - using correct simple Encoder-only architecture"""
     def __init__(
         self,
         hist_dim: int,
@@ -36,7 +36,7 @@ class Transformer(nn.Module):
         self.hist_proj = nn.Linear(hist_dim, d_model)
         self.fcst_proj = nn.Linear(fcst_dim, d_model) if fcst_dim > 0 else None
 
-        # 改进：局部位置编码 | Improvement: local positional encoding
+        # Improvement: local positional encoding
         self.pos_enc = LocalPositionalEncoding(d_model)
 
         # Transformer encoder
@@ -49,7 +49,7 @@ class Transformer(nn.Module):
         )
         self.encoder = nn.TransformerEncoder(encoder_layer, num_layers=config['num_layers'])
 
-        # 增强的输出层 | Enhanced output layer
+        # Enhanced output layer
         self.head = nn.Sequential(
             nn.Linear(d_model, d_model // 2),
             nn.ReLU(),
@@ -73,25 +73,25 @@ class Transformer(nn.Module):
             f = self.pos_enc(f)
             f_enc = self.encoder(f)           # (B, future_hours, d_model)
             
-            # 使用历史编码的最后部分和预测编码 | Use last part of historical encoding and forecast encoding
+            # Use last part of historical encoding and forecast encoding
             combined = torch.cat([h_enc, f_enc], dim=1)
         else:
             combined = h_enc
 
-        # 使用最后的时间步进行预测 | Use last time step for prediction
+        # Use last time step for prediction
         last_timestep = combined[:, -1, :]  # (B, d_model)
         result = self.head(last_timestep)   # (B, future_hours)
         
-        return result  # 直接返回，不进行硬编码缩放 | Return directly, no hardcoded scaling
+        return result  # Return directly, no hardcoded scaling
 
 class LocalPositionalEncoding(nn.Module):
-    """局部位置编码 - 支持更长的序列 | Local positional encoding - supports longer sequences"""
-    def __init__(self, d_model, max_len=200):  # 增加到200以支持168小时lookback | Increased to 200 to support 168-hour lookback
+    Local positional encoding - supports longer sequences"""
+    def __init__(self, d_model, max_len=200):  # Increased to 200 to support 168-hour lookback
         super().__init__()
         self.d_model = d_model
         self.max_len = max_len
         
-        # 创建位置编码 | Create positional encoding
+        # Create positional encoding
         pe = torch.zeros(max_len, d_model)
         position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
         div_term = torch.exp(torch.arange(0, d_model, 2).float() * 
@@ -101,10 +101,10 @@ class LocalPositionalEncoding(nn.Module):
         self.register_buffer('pe', pe.unsqueeze(0))
 
     def forward(self, x):
-        # 如果序列长度超过max_len，动态扩展位置编码 | If sequence length exceeds max_len, dynamically extend positional encoding
+        # If sequence length exceeds max_len, dynamically extend positional encoding
         seq_len = x.size(1)
         if seq_len > self.max_len:
-            # 动态创建更长的位置编码 | Dynamically create longer positional encoding
+            # Dynamically create longer positional encoding
             pe = torch.zeros(seq_len, self.d_model, device=x.device)
             position = torch.arange(0, seq_len, dtype=torch.float, device=x.device).unsqueeze(1)
             div_term = torch.exp(torch.arange(0, self.d_model, 2).float() * 

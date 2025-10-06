@@ -17,7 +17,7 @@ def get_optimizer(
 ) -> torch.optim.Optimizer:
     """
     Create an AdamW optimizer for the given model.
-    使用AdamW解决周期性问题，有更好的泛化能力 | Use AdamW to solve periodicity issues with better generalization
+    Use AdamW to solve periodicity issues with better generalization
 
     Args:
         model: PyTorch model
@@ -33,7 +33,7 @@ def get_scheduler(
 ) -> torch.optim.lr_scheduler.ReduceLROnPlateau:
     """
     Create a ReduceLROnPlateau scheduler for learning rate decay.
-    更好的学习率调度策略，解决周期性问题 | Better learning rate scheduling strategy to solve periodicity issues
+    Better learning rate scheduling strategy to solve periodicity issues
 
     Args:
         optimizer: optimizer to wrap
@@ -42,9 +42,9 @@ def get_scheduler(
     return torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer,
         mode='min',
-        factor=0.5,     # 学习率减半 | Halve learning rate
-        patience=5,     # 5个epoch没有改善就降低学习率 | Reduce LR if no improvement for 5 epochs
-        min_lr=1e-7     # 最小学习率 | Minimum learning rate
+        factor=0.5,     # Halve learning rate
+        patience=5,     # Reduce LR if no improvement for 5 epochs
+        min_lr=1e-7     # Minimum learning rate
     )
 
 
