@@ -77,6 +77,9 @@ cd PV-Forecasting
 # Install dependencies
 pip install -r requirements.txt
 
+# For Colab: Auto-detect CUDA and install matching cuML for 100% GPU
+python setup_cuml_gpu.py
+
 # Run all 284 experiments
 python run_all_experiments.py
 ```
