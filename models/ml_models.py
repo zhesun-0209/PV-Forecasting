@@ -12,19 +12,17 @@ GPU_LINEAR_AVAILABLE = False
 try:
     import cuml
     from cuml.ensemble import RandomForestRegressor as cuRandomForestRegressor
-    GPU_RF_AVAILABLE = True
-    print("cuML Random Forest available (GPU)")
-except Exception as e:
-    print(f"cuML Random Forest not available: {e}")
-    from sklearn.ensemble import RandomForestRegressor as cuRandomForestRegressor
-
-try:
     from cuml.linear_model import LinearRegression as cuLinearRegression
+    GPU_RF_AVAILABLE = True
     GPU_LINEAR_AVAILABLE = True
-    print("cuML Linear Regression available (GPU)")
-except Exception as e:
-    print(f"cuML Linear Regression not available: {e}")
+    print("cuML available (GPU-accelerated Random Forest and Linear Regression)")
+except Exception:
+    # Silently fallback to sklearn
+    from sklearn.ensemble import RandomForestRegressor as cuRandomForestRegressor
     from sklearn.linear_model import LinearRegression as cuLinearRegression
+    GPU_RF_AVAILABLE = False
+    GPU_LINEAR_AVAILABLE = False
+    print("Using sklearn (CPU) for Random Forest and Linear Regression")
 
 # Check XGBoost GPU support
 XGB_GPU_AVAILABLE = False

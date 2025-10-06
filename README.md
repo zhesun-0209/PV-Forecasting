@@ -77,15 +77,20 @@ cd PV-Forecasting
 # Install dependencies
 pip install -r requirements.txt
 
+# For Colab: Fix cuML dependencies for full GPU support
+python install_cuml_colab.py
+
 # Run all 284 experiments
 python run_all_experiments.py
 ```
 
 **GPU Acceleration:**
-- All DL models (LSTM, GRU, Transformer, TCN) automatically use GPU if available
-- XGBoost and LightGBM automatically use GPU if available
-- Random Forest uses GPU if cuML is installed (recommended for Colab)
-- Linear Regression uses GPU if cuML is installed
+- All DL models (LSTM, GRU, Transformer, TCN): Automatic GPU usage
+- XGBoost and LightGBM: Automatic GPU usage
+- Random Forest: GPU via cuML (run `install_cuml_colab.py` on Colab)
+- Linear Regression: GPU via cuML (run `install_cuml_colab.py` on Colab)
+
+**Note:** If cuML installation fails, Random Forest and Linear will automatically fall back to CPU (sklearn), but other models still use GPU.
 
 ## 📊 Feature Definitions
 
