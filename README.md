@@ -77,23 +77,24 @@ cd PV-Forecasting
 # Install dependencies
 pip install -r requirements.txt
 
-# For Colab: Install cuML for full GPU support
-python install_cuml_colab.py
-
-# Run experiments with CUDA-enabled Python wrapper
-/tmp/python_with_cuda.sh run_all_experiments.py
-
-# OR if cuML fails, use regular Python (6/8 models still use GPU)
+# Run all 284 experiments
 python run_all_experiments.py
 ```
 
-**GPU Acceleration:**
-- All DL models (LSTM, GRU, Transformer, TCN): Automatic GPU usage
-- XGBoost and LightGBM: Automatic GPU usage
-- Random Forest: GPU via cuML (run `install_cuml_colab.py` on Colab)
-- Linear Regression: GPU via cuML (run `install_cuml_colab.py` on Colab)
+**GPU Acceleration (Automatic):**
 
-**Note:** If cuML installation fails, Random Forest and Linear will automatically fall back to CPU (sklearn), but other models still use GPU.
+| Model | GPU Support | Library | Notes |
+|-------|-------------|---------|-------|
+| LSTM | ✓ Auto | PyTorch | Full GPU acceleration |
+| GRU | ✓ Auto | PyTorch | Full GPU acceleration |
+| Transformer | ✓ Auto | PyTorch | Full GPU acceleration |
+| TCN | ✓ Auto | PyTorch | Full GPU acceleration |
+| XGBoost | ✓ Auto | xgboost | GPU if CUDA available |
+| LightGBM | ✓ Auto | lightgbm | GPU if CUDA available |
+| Random Forest | CPU | sklearn | cuML GPU complex on Colab |
+| Linear | CPU | sklearn | cuML GPU complex on Colab |
+
+**Performance:** 6/8 models use GPU, covering 240/284 experiments (85%). Total runtime on Colab: ~3-4 hours.
 
 ## 📊 Feature Definitions
 
