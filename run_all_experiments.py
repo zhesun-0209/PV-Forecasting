@@ -26,25 +26,31 @@ def generate_all_configs():
     """
     Generate all experiment configurations
     
-    Total experiments:
-    - DL models (LSTM, GRU, Transformer, TCN): 4 models
-    - ML models (RF, XGB, LGBM, Linear): 4 models
-    - Complexities: 2 (low, high)
-    - PV experiments: 4 feature combos x 2 lookbacks x 2 TE options = 16 per model-complexity
-    - NWP experiments: 2 feature combos x 2 TE options = 4 per model-complexity
+    Experiment counts:
     
-    Total: 8 models x 2 complexities x (16 + 4) = 320 experiments
+    1. DL models (LSTM, GRU, Transformer, TCN): 4 models x 2 complexities
+       - PV experiments: 4 feature combos x 2 lookbacks x 2 TE = 16 per model-complexity
+       - NWP experiments: 2 feature combos x 2 TE = 4 per model-complexity
+       - Subtotal: 4 models x 2 complexities x (16 + 4) = 160 experiments
+    
+    2. ML models (RF, XGB, LGBM): 3 models x 2 complexities
+       - PV experiments: 4 feature combos x 2 lookbacks x 2 TE = 16 per model-complexity
+       - NWP experiments: 2 feature combos x 2 TE = 4 per model-complexity
+       - Subtotal: 3 models x 2 complexities x (16 + 4) = 120 experiments
+    
+    3. Linear model: special case (no lookback, no complexity, only TE)
+       - NWP: 2 feature combos x 2 TE = 4 experiments
+       - Subtotal: 4 experiments
+    
+    Total: 160 + 120 + 4 = 284 experiments
     """
     
     configs = []
     script_dir = os.path.dirname(os.path.abspath(__file__))
     data_path = os.path.join(script_dir, "data", "Project1140.csv")
     
-    # DL models: 4 models x 2 complexities = 8 configs
-    # ML models: 4 models (RF, XGB, LGBM, Linear) x 2 complexities = 8 configs  
-    # Total: 16 model configs
     dl_models = ['LSTM', 'GRU', 'Transformer', 'TCN']
-    ml_models = ['RF', 'XGB', 'LGBM', 'Linear']
+    ml_models = ['RF', 'XGB', 'LGBM']  # Linear is handled separately
     complexities = ['low', 'high']
     
     lookbacks = [24, 72]
@@ -106,6 +112,15 @@ def generate_all_configs():
                         feat_combo, use_te, True  # is_nwp_only=True
                     )
                     configs.append(config)
+    
+    # Linear model: special case (only NWP/NWP+, no lookback, no complexity, only TE)
+    for feat_combo in feature_combos_nwp:
+        for use_te in te_options:
+            config = create_config(
+                data_path, 'Linear', None, 0,  # complexity=None for Linear
+                feat_combo, use_te, True  # is_nwp_only=True
+            )
+            configs.append(config)
     
     return configs
 
@@ -194,8 +209,11 @@ def create_config(data_path, model, complexity, lookback, feat_combo, use_te, is
                     'kernel_size': 3
                 }
             })
+    elif model == 'Linear':
+        # Linear model: no complexity parameter (always None)
+        config['model_params'] = {}  # Linear regression has no hyperparameters
     else:
-        # ML model parameters (RF, XGB, LGBM, Linear)
+        # ML model parameters (RF, XGB, LGBM)
         if complexity == 'low':
             config['model_params'] = {
                 'n_estimators': 50,
@@ -214,7 +232,13 @@ def create_config(data_path, model, complexity, lookback, feat_combo, use_te, is
             }
     
     te_suffix = 'TE' if use_te else 'noTE'
-    config['experiment_name'] = f"{model}_{complexity}_{feat_name}_{te_suffix}"
+    
+    # For Linear model, don't include complexity in experiment name
+    if model == 'Linear':
+        config['experiment_name'] = f"{model}_{feat_name}_{te_suffix}"
+    else:
+        config['experiment_name'] = f"{model}_{complexity}_{feat_name}_{te_suffix}"
+    
     config['save_dir'] = f'results/{config["experiment_name"]}'
     
     return config
@@ -260,9 +284,6 @@ def run_all_experiments():
                 df_clean, config['past_hours'], config['future_hours'], 
                 hist_feats, fcst_feats, no_hist_power
             )
-            
-            if X_fcst is not None:
-            else:
             
             total_samples = len(X_hist)
             indices = np.arange(total_samples)
@@ -373,6 +394,5 @@ def run_all_experiments():
 
 if __name__ == "__main__":
     success = run_all_experiments()
-    if success:
-    else:
+    if not success:
         sys.exit(1)

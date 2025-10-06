@@ -21,7 +21,7 @@ class PositionalEncoding(nn.Module):
         return x + self.pe[:, :x.size(1)]
 
 class Transformer(nn.Module):
-    PV forecasting Transformer model - using correct simple Encoder-only architecture"""
+    """PV forecasting Transformer model - using correct simple Encoder-only architecture"""
     def __init__(
         self,
         hist_dim: int,
@@ -85,7 +85,7 @@ class Transformer(nn.Module):
         return result  # Return directly, no hardcoded scaling
 
 class LocalPositionalEncoding(nn.Module):
-    Local positional encoding - supports longer sequences"""
+    """Local positional encoding - supports longer sequences"""
     def __init__(self, d_model, max_len=200):  # Increased to 200 to support 168-hour lookback
         super().__init__()
         self.d_model = d_model

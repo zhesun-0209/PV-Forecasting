@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class TemporalBlock(nn.Module):
-    TCN basic block, contains dilated convolution, residual connection and layer normalization"""
+    """TCN basic block, contains dilated convolution, residual connection and layer normalization"""
     def __init__(self, n_inputs, n_outputs, kernel_size, stride, dilation, padding, dropout=0.2):
         super(TemporalBlock, self).__init__()
         self.conv1 = nn.Conv1d(n_inputs, n_outputs, kernel_size, stride=stride, padding=padding, dilation=dilation)
@@ -34,7 +34,7 @@ class TemporalBlock(nn.Module):
         return self.relu(out + res)
 
 class Chomp1d(nn.Module):
-    Remove padding for causal convolution"""
+    """Remove padding for causal convolution"""
     def __init__(self, chomp_size):
         super(Chomp1d, self).__init__()
         self.chomp_size = chomp_size
@@ -43,6 +43,7 @@ class Chomp1d(nn.Module):
         return x[:, :, :-self.chomp_size].contiguous()
 
 class TCNModel(nn.Module):
+    """Simplified TCN model for PV forecasting"""
     def __init__(self, hist_dim: int, fcst_dim: int, config: dict):
         super().__init__()
         channels = config['tcn_channels']

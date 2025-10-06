@@ -47,7 +47,7 @@ class RNNBase(nn.Module):
 
 
 class LSTM(nn.Module):
-    Simplified LSTM forecasting model - consistent complexity with other models"""
+    """Simplified LSTM forecasting model - consistent complexity with other models"""
     def __init__(self, hist_dim: int, fcst_dim: int, config: dict):
         super().__init__()
         self.cfg = config
@@ -85,7 +85,7 @@ class LSTM(nn.Module):
         return self.head(out[:, -1, :])
 
 class GRU(nn.Module):
-    Simplified GRU forecasting model - consistent complexity with other models"""
+    """Simplified GRU forecasting model - consistent complexity with other models"""
     def __init__(self, hist_dim: int, fcst_dim: int, config: dict):
         super().__init__()
         self.cfg = config

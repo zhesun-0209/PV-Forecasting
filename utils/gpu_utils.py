@@ -145,6 +145,7 @@ def clear_gpu_memory():
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
     except Exception as e:
+        pass
 
 def print_gpu_status():
     """
@@ -152,4 +153,7 @@ def print_gpu_status():
     """
     status = check_gpu_availability()
     if status['available']:
+        print(f"GPU: {status['name']}")
+        print(f"Memory: {status['memory_total_gb']:.1f} GB")
     else:
+        print("GPU: Not available")
