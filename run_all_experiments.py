@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
+Run all 284 experiments for PV forecasting
 """
 
 import pandas as pd
@@ -12,6 +13,10 @@ import time
 from datetime import datetime
 import warnings
 warnings.filterwarnings('ignore')
+
+# Suppress compilation warnings
+os.environ['PYTHONWARNINGS'] = 'ignore'
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 os.chdir(script_dir)
