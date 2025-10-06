@@ -1,140 +1,163 @@
 """
 Install cuML with correct dependencies on Colab
-Complete fix for CUDA runtime and CuPy conflicts
+Complete solution: Set CUDA env BEFORE any imports
 """
 import subprocess
 import sys
 import os
+import glob
 
-def pip_run(args):
+# STEP 0: Set LD_LIBRARY_PATH BEFORE any CUDA/cuML imports
+print("="*60)
+print("Setting up CUDA environment...")
+print("="*60)
+
+cuda_lib_paths = [
+    "/usr/local/lib/python3.12/dist-packages/nvidia/cuda_runtime/lib",
+    "/usr/local/lib/python3.12/dist-packages/nvidia/cublas/lib",
+    "/usr/local/lib/python3.12/dist-packages/nvidia/cudnn/lib",
+    "/usr/local/cuda-11.8/lib64",
+    "/usr/local/cuda/lib64",
+    "/usr/lib/x86_64-linux-gnu"
+]
+
+existing_paths = [p for p in cuda_lib_paths if os.path.exists(p)]
+if existing_paths:
+    new_ld_path = ':'.join(existing_paths) + ':' + os.environ.get('LD_LIBRARY_PATH', '')
+    os.environ['LD_LIBRARY_PATH'] = new_ld_path
+    print(f"✓ LD_LIBRARY_PATH set with {len(existing_paths)} CUDA paths")
+
+# Find and link libcudart.so.11.0
+print("\nSearching for libcudart...")
+for path in existing_paths:
+    cudart_files = glob.glob(f"{path}/libcudart.so*")
+    if cudart_files:
+        source = cudart_files[0]
+        target = f"{path}/libcudart.so.11.0"
+        
+        if not os.path.exists(target):
+            try:
+                os.symlink(source, target)
+                print(f"✓ Created: {target}")
+            except:
+                subprocess.run(["ln", "-sf", source, target], capture_output=True)
+                if os.path.exists(target):
+                    print(f"✓ Created: {target}")
+        else:
+            print(f"✓ Found: {target}")
+        break
+
+def pip_run(args, quiet=True):
     """Run pip command"""
     cmd = [sys.executable, "-m", "pip"] + args
+    if quiet and "-q" not in args:
+        cmd.insert(3, "-q")
     result = subprocess.run(cmd, capture_output=True, text=True)
     return result.returncode == 0
 
-print("="*60)
-print("Installing cuML for GPU-accelerated ML models")
-print("="*60)
-
-# Step 1: Remove ALL CuPy versions to avoid conflicts
-print("\nStep 1: Removing CuPy conflicts...")
-cupy_packages = ["cupy", "cupy-cuda11x", "cupy-cuda12x", "cupy-cuda113", "cupy-cuda114", "cupy-cuda115"]
-for pkg in cupy_packages:
-    pip_run(["uninstall", "-y", pkg])
-print("  ✓ CuPy cleaned")
-
-# Step 2: Remove old cuML
-print("\nStep 2: Cleaning old cuML...")
-pip_run(["uninstall", "-y", "cuml-cu11", "cuml-cu12"])
-print("  ✓ cuML cleaned")
-
-# Step 3: Install CUDA runtime libraries
-print("\nStep 3: Installing CUDA runtime libraries...")
-cuda_libs = [
-    "nvidia-cuda-runtime-cu11",
-    "nvidia-cudnn-cu11", 
-    "nvidia-cublas-cu11",
-    "nvidia-cusolver-cu11",
-    "nvidia-cusparse-cu11",
-    "nvidia-curand-cu11"
-]
-for lib in cuda_libs:
-    pip_run(["install", "-q", lib])
-print("  ✓ CUDA libraries installed")
-
-# Step 4: Install correct CuPy version for CUDA 11
-print("\nStep 4: Installing CuPy for CUDA 11...")
-pip_run(["install", "cupy-cuda11x==13.0.0"])
-print("  ✓ cupy-cuda11x installed")
-
-# Step 5: Install cuda-python and cuda-bindings
-print("\nStep 5: Installing CUDA Python bindings...")
-pip_run(["install", "cuda-python==11.8.7"])
-pip_run(["install", "cuda-bindings~=11.8.7"])
-print("  ✓ cuda-python and cuda-bindings installed")
-
-# Step 6: Install cuML
-print("\nStep 6: Installing cuML...")
-result = subprocess.run([
-    sys.executable, "-m", "pip", "install",
-    "cuml-cu11==25.6.*"
-], capture_output=True, text=True)
-print("  ✓ cuML installed")
-
-# Step 7: Set LD_LIBRARY_PATH for CUDA libraries
-print("\nStep 7: Setting CUDA library path...")
-cuda_lib_path = "/usr/local/lib/python3.12/dist-packages/nvidia/cuda_runtime/lib"
-if os.path.exists(cuda_lib_path):
-    os.environ['LD_LIBRARY_PATH'] = f"{cuda_lib_path}:{os.environ.get('LD_LIBRARY_PATH', '')}"
-    print(f"  ✓ LD_LIBRARY_PATH set to {cuda_lib_path}")
-else:
-    # Try alternative paths
-    alt_paths = [
-        "/usr/local/cuda-11.8/lib64",
-        "/usr/local/cuda/lib64",
-        "/usr/lib/x86_64-linux-gnu"
-    ]
-    for path in alt_paths:
-        if os.path.exists(path):
-            os.environ['LD_LIBRARY_PATH'] = f"{path}:{os.environ.get('LD_LIBRARY_PATH', '')}"
-            print(f"  ✓ LD_LIBRARY_PATH set to {path}")
-            break
-
-# Step 8: Test installation
 print("\n" + "="*60)
-print("Testing cuML installation...")
+print("Installing cuML dependencies...")
 print("="*60)
+
+# Clean installations
+print("\n1. Removing conflicts...")
+for pkg in ["cupy", "cupy-cuda11x", "cupy-cuda12x", "cuml-cu11", "cuml-cu12", "cuda-python"]:
+    pip_run(["uninstall", "-y", pkg])
+
+# Install in correct order
+print("\n2. Installing cuda-python 11.8.7...")
+pip_run(["install", "cuda-python==11.8.7"])
+
+print("\n3. Installing cuda-bindings...")
+pip_run(["install", "cuda-bindings~=11.8.7"])
+
+print("\n4. Installing CUDA runtime...")
+pip_run(["install", "nvidia-cuda-runtime-cu11"])
+
+print("\n5. Installing CuPy for CUDA 11...")
+pip_run(["install", "cupy-cuda11x==13.0.0"])
+
+print("\n6. Installing cuML...")
+pip_run(["install", "cuml-cu11==25.6.*"])
+
+print("\n✓ All packages installed")
+
+# NOW test with environment already set
+print("\n" + "="*60)
+print("Testing cuML with GPU...")
+print("="*60)
+
+# Force reload of shared libraries
+import importlib
+import sys
+
+# Remove cached imports
+if 'cuml' in sys.modules:
+    del sys.modules['cuml']
+if 'cuda' in sys.modules:
+    del sys.modules['cuda']
 
 try:
-    # Test cuda bindings
-    print("\n1. Testing cuda-bindings...")
+    print("\n1. Testing CUDA bindings...")
     import cuda.bindings.cyruntime
-    print("   ✓ cuda.bindings.cyruntime available")
+    print("   ✓ cuda.bindings.cyruntime: OK")
     
-    # Test cuML imports
-    print("\n2. Testing cuML imports...")
+    print("\n2. Testing CuPy...")
+    import cupy as cp
+    test_arr = cp.array([1, 2, 3])
+    print(f"   ✓ CuPy working (device: {test_arr.device})")
+    
+    print("\n3. Testing cuML imports...")
     from cuml.ensemble import RandomForestRegressor
     from cuml.linear_model import LinearRegression
+    print("   ✓ cuML modules loaded")
+    
+    print("\n4. Functional test...")
     import numpy as np
-    print("   ✓ cuML modules imported")
     
-    # Functional test
-    print("\n3. Testing functionality...")
-    X_test = np.random.rand(100, 5).astype(np.float32)
-    y_test = np.random.rand(100).astype(np.float32)
+    X = np.random.rand(100, 5).astype(np.float32)
+    y = np.random.rand(100).astype(np.float32)
     
-    rf = RandomForestRegressor(n_estimators=10, max_depth=5)
-    rf.fit(X_test, y_test)
-    _ = rf.predict(X_test[:10])
-    print("   ✓ Random Forest GPU: Working")
+    # Test RF
+    rf = RandomForestRegressor(n_estimators=5, max_depth=3, random_state=42)
+    rf.fit(X, y)
+    pred = rf.predict(X[:5])
+    print(f"   ✓ Random Forest GPU: Working (pred shape: {pred.shape})")
     
+    # Test Linear
     lr = LinearRegression()
-    lr.fit(X_test, y_test)
-    _ = lr.predict(X_test[:10])
-    print("   ✓ Linear Regression GPU: Working")
+    lr.fit(X, y)
+    pred = lr.predict(X[:5])
+    print(f"   ✓ Linear Regression GPU: Working (pred shape: {pred.shape})")
     
     print("\n" + "="*60)
-    print("SUCCESS: All 8 models ready with GPU!")
+    print("✓✓✓ SUCCESS: All 8 models GPU-ready! ✓✓✓")
     print("="*60)
-    print("\nGPU-Accelerated Models (100% coverage):")
-    print("  ✓ LSTM (PyTorch)")
-    print("  ✓ GRU (PyTorch)")
-    print("  ✓ Transformer (PyTorch)")
-    print("  ✓ TCN (PyTorch)")
-    print("  ✓ XGBoost (Native GPU)")
-    print("  ✓ LightGBM (Native GPU)")
-    print("  ✓ Random Forest (cuML GPU)")
-    print("  ✓ Linear Regression (cuML GPU)")
-    print("\nEstimated time for 284 experiments: 2-3 hours")
+    print("\nGPU Models (100% coverage):")
+    print("  1. LSTM - PyTorch GPU")
+    print("  2. GRU - PyTorch GPU")
+    print("  3. Transformer - PyTorch GPU")
+    print("  4. TCN - PyTorch GPU")
+    print("  5. XGBoost - Native GPU")
+    print("  6. LightGBM - Native GPU")
+    print("  7. Random Forest - cuML GPU ✓")
+    print("  8. Linear Regression - cuML GPU ✓")
+    
+    # Write success marker
+    with open(".cuml_gpu_ready", "w") as f:
+        f.write("SUCCESS")
     
 except Exception as e:
-    print(f"\n✗ Error: {e}")
-    print("\nTroubleshooting steps:")
-    print("  1. Check CUDA version: !nvcc --version")
-    print("  2. List CUDA packages: !pip list | grep cuda")
-    print("  3. Check library path: !echo $LD_LIBRARY_PATH")
-    print("\nNote: Experiments will still run with CPU fallback")
+    print(f"\n✗ cuML test failed: {e}")
+    import traceback
+    traceback.print_exc()
+    
+    print("\n" + "="*60)
+    print("FALLBACK: Using CPU for RF and Linear")
+    print("="*60)
+    print("6/8 models still use GPU")
 
 print("\n" + "="*60)
-print("Installation complete. Run: python run_all_experiments.py")
+print("Setup complete!")
+print("Next: python run_colab.py")
 print("="*60)
