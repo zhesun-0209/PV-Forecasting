@@ -70,6 +70,13 @@ def main():
     # Step 4: Install CUDA 12 compatible packages
     print("\n[4/6] Installing CUDA 12 packages...")
     
+    # Install CUDA bindings first (critical dependency)
+    if not run_command(
+        "pip install cuda-python --no-cache-dir",
+        "Installing CUDA Python bindings"
+    ):
+        print("Warning: CUDA Python installation had issues, continuing...")
+    
     # Install CuPy for CUDA 12
     if not run_command(
         "pip install cupy-cuda12x --no-cache-dir",
@@ -77,12 +84,19 @@ def main():
     ):
         print("Warning: CuPy installation had issues, continuing...")
     
-    # Install cuML for CUDA 12
+    # Install cuML for CUDA 12 (this will install all dependencies)
     if not run_command(
         "pip install cuml-cu12==25.8.0 --extra-index-url=https://pypi.nvidia.com --no-cache-dir",
         "Installing cuML for CUDA 12"
     ):
         print("Warning: cuML installation had issues, continuing...")
+    
+    # Verify CUDA bindings are accessible
+    print("\n[4.5/6] Verifying CUDA bindings...")
+    run_command(
+        "python -c 'from cuda import cuda, cudart; print(\"CUDA bindings OK\")'",
+        "Testing CUDA bindings"
+    )
     
     # Step 5: Verify installation
     print("\n[5/6] Verifying cuML installation...")
