@@ -83,40 +83,74 @@ def train_rf(X_train, y_train, params: dict):
             print("Detected NaN or Inf values, cleaning")
             y_train = np.nan_to_num(y_train, nan=0.0, posinf=1.0, neginf=-1.0)
         
+        n_est = params.get('n_estimators', 100)
+        max_d = params.get('max_depth', 10)
+        
         rf_params = {
-            'n_estimators': params.get('n_estimators', 100),
-            'max_depth': params.get('max_depth', 10),
-            'random_state': 42
+            'n_estimators': n_est,
+            'max_depth': max_d,
+            'random_state': 42,
+            'n_jobs': -1  # Use all CPU cores for sklearn
         }
+        
+        print(f"Training RF: n_estimators={n_est}, max_depth={max_d}, samples={len(X_train)}, features={X_train.shape[1]}")
         
         # Try GPU version with direct NumPy arrays (cuML compatibility)
         if GPU_RF_AVAILABLE:
             try:
                 from sklearn.multioutput import MultiOutputRegressor
+                import signal
                 
-                print("Using Random Forest GPU (cuML)")
+                print("Attempting Random Forest GPU (cuML)...")
+                
+                # Set alarm for timeout (not available on Windows, skip on Windows)
+                try:
+                    # This will only work on Unix/Linux (Colab)
+                    def timeout_handler(signum, frame):
+                        raise TimeoutError("RF GPU training timeout")
+                    signal.signal(signal.SIGALRM, timeout_handler)
+                    signal.alarm(600)  # 10 minutes timeout
+                except (AttributeError, ValueError):
+                    # Windows doesn't support SIGALRM, skip timeout
+                    pass
                 
                 # cuML works directly with NumPy arrays (no cuDF needed!)
                 base = cuRandomForestRegressor(**rf_params)
-                model = MultiOutputRegressor(base)
-                model.fit(X_train, y_train)  # 直接使用NumPy数组
+                model = MultiOutputRegressor(base, n_jobs=1)
+                model.fit(X_train, y_train)
+                
+                try:
+                    signal.alarm(0)  # Cancel alarm
+                except (AttributeError, ValueError):
+                    pass
+                
+                print("✓ Random Forest GPU (cuML) training successful")
                 return model
-            except Exception as e:
-                print(f"cuML GPU failed ({e}), falling back to sklearn CPU")
+                
+            except (Exception, TimeoutError) as e:
+                print(f"✗ cuML GPU failed or timeout ({type(e).__name__}: {e})")
+                print("  Falling back to sklearn CPU (this is safe and expected)")
+                try:
+                    signal.alarm(0)  # Cancel alarm if set
+                except (AttributeError, ValueError):
+                    pass
                 # Fall through to CPU version
         
-        # CPU version (sklearn)
-        print("Using Random Forest CPU (sklearn)")
+        # CPU version (sklearn) - Always works
+        print("Using Random Forest CPU (sklearn) - stable fallback")
         from sklearn.ensemble import RandomForestRegressor
         from sklearn.multioutput import MultiOutputRegressor
         
         base = RandomForestRegressor(**rf_params)
-        model = MultiOutputRegressor(base)
+        model = MultiOutputRegressor(base, n_jobs=1)  # Don't parallelize wrapper
         model.fit(X_train, y_train)
+        print("✓ Random Forest CPU (sklearn) training successful")
         return model
         
     except Exception as e:
-        print(f"Random Forest training failed: {e}")
+        print(f"✗ Random Forest training completely failed: {e}")
+        import traceback
+        traceback.print_exc()
         raise RuntimeError(f"Random Forest training failed: {e}")
 
 # GBR removed, use XGBoost and LightGBM instead
