@@ -263,22 +263,31 @@ def run_all_experiments():
                 model, metrics = train_ml_model(config, train_data, val_data, test_data, scalers)
 
             training_time = time.time() - start_time
-            feat_name_str = config['experiment_name'].split('_')[2]
+            
+            # Parse feature combination name from experiment name
+            # Format: Model_complexity_feature_lookback_TE or Linear_feature_TE
+            parts = exp_name.split('_')
+            if config['model'] == 'Linear':
+                # Linear_NWP_TE or Linear_NWP+_TE
+                feat_name_str = '_'.join(parts[1:-1])  # Everything between model and TE/noTE
+            else:
+                # LSTM_low_PV_24h_TE or LSTM_low_PV+NWP_72h_noTE
+                feat_name_str = '_'.join(parts[2:-1])  # Everything between complexity and TE/noTE
 
             result = {
                 'experiment_name': exp_name,
                 'model': config['model'],
-                'complexity': config['model_complexity'],
+                'complexity': config.get('model_complexity', 'N/A'),
                 'feature_combo': feat_name_str,
                 'lookback_hours': config['past_hours'],
                 'use_time_encoding': config['use_time_encoding'],
-                'mae': metrics['mae'],
-                'rmse': metrics['rmse'],
-                'r2': metrics['r2'],
-                'train_time_sec': training_time,
-                'test_samples': metrics['samples_count'],
-                'best_epoch': metrics.get('best_epoch', 0),
-                'param_count': metrics.get('param_count', 0)
+                'mae': metrics.get('mae', 0.0),
+                'rmse': metrics.get('rmse', 0.0),
+                'r2': metrics.get('r2', 0.0),
+                'train_time_sec': round(training_time, 2),
+                'test_samples': metrics.get('samples_count', 0),
+                'best_epoch': int(metrics.get('best_epoch', 0)) if not pd.isna(metrics.get('best_epoch', 0)) else 0,
+                'param_count': int(metrics.get('param_count', 0))
             }
 
             print(f"  [OK] MAE: {metrics['mae']:.4f}, RMSE: {metrics['rmse']:.4f}")
