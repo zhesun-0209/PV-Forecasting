@@ -58,19 +58,20 @@ def generate_all_configs():
     ]
 
     # === 1. DL models: PV-based experiments ===
-    # for model in dl_models:
-    #     for complexity in complexities:
-    #         for lookback in lookbacks:
-    #             for feat_combo in feature_combos_pv:
-    #                 for use_te in te_options:
-    #                     configs.append(create_config(data_path, model, complexity, lookback, feat_combo, use_te, False))
+    # === 1. DL models: PV-based experiments ===
+    for model in dl_models:
+        for complexity in complexities:
+            for lookback in lookbacks:
+                for feat_combo in feature_combos_pv:
+                    for use_te in te_options:
+                        configs.append(create_config(data_path, model, complexity, lookback, feat_combo, use_te, False))
 
     # === 2. DL models: NWP-only experiments ===
-    # for model in dl_models:
-    #     for complexity in complexities:
-    #         for feat_combo in feature_combos_nwp:
-    #             for use_te in te_options:
-    #                 configs.append(create_config(data_path, model, complexity, 0, feat_combo, use_te, True))
+    for model in dl_models:
+        for complexity in complexities:
+            for feat_combo in feature_combos_nwp:
+                for use_te in te_options:
+                    configs.append(create_config(data_path, model, complexity, 0, feat_combo, use_te, True))
 
     # === 3. ML models ===
     for model in ml_models:
