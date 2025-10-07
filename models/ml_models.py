@@ -28,15 +28,15 @@ except Exception:
 XGB_GPU_AVAILABLE = False
 try:
     import xgboost as xgb
-    # Test XGBoost GPU support
+    # Test XGBoost GPU support with proper GPU method
     try:
-        test_model = xgb.XGBRegressor(tree_method='hist', device='cuda', n_estimators=1)
+        test_model = xgb.XGBRegressor(tree_method='gpu_hist', device='cuda', n_estimators=1)
         XGB_GPU_AVAILABLE = True
-        print("XGBoost GPU available")  # XGBoost GPU available
+        print("XGBoost GPU available")
     except:
-        print("XGBoost GPU unavailable, using CPU version")  # XGBoost GPU unavailable, using CPU version
+        print("XGBoost GPU unavailable, using CPU version")
 except ImportError:
-    print("XGBoost unavailable")  # XGBoost unavailable
+    print("XGBoost unavailable")
 
 # Check LightGBM GPU support
 LGB_GPU_AVAILABLE = False
@@ -122,68 +122,83 @@ def train_rf(X_train, y_train, params: dict):
 # GBR removed, use XGBoost and LightGBM instead
 
 def train_xgb(X_train, y_train, params: dict):
-    """Train XGBoost regressor with multi-output support - GPU preferred."""
+    """Train XGBoost regressor with multi-output support - GPU optimized."""
     try:
         # Check data validity
         if np.any(np.isnan(X_train)) or np.any(np.isinf(X_train)):
-            print("Detected NaN or Inf values, cleaning")  # Detected NaN or Inf values, cleaning
+            print("Detected NaN or Inf values, cleaning")
             X_train = np.nan_to_num(X_train, nan=0.0, posinf=1.0, neginf=-1.0)
         if np.any(np.isnan(y_train)) or np.any(np.isinf(y_train)):
-            print("Detected NaN or Inf values, cleaning")  # Detected NaN or Inf values, cleaning
+            print("Detected NaN or Inf values, cleaning")
             y_train = np.nan_to_num(y_train, nan=0.0, posinf=1.0, neginf=-1.0)
         
         # Try to use GPU, if unavailable use CPU
-        if torch.cuda.is_available():
-            print("Using XGBoost GPU version")  # Using XGBoost GPU version
+        if torch.cuda.is_available() and XGB_GPU_AVAILABLE:
+            print("Using XGBoost GPU version (gpu_hist)")
             gpu_params = params.copy()
             gpu_params.update({
-                'tree_method': 'hist',
+                'tree_method': 'gpu_hist',  # GPU-optimized histogram algorithm
                 'device': 'cuda',
-                'verbosity': 0
+                'verbosity': 0,
+                'n_jobs': -1,  # Use all available CPU threads for data loading
+                'predictor': 'gpu_predictor'  # GPU predictor for inference
             })
             base = XGBRegressor(**gpu_params)
         else:
-            print("GPU unavailable, using XGBoost CPU version")  # GPU unavailable, using XGBoost CPU version
-            base = XGBRegressor(**params)
+            print("GPU unavailable, using XGBoost CPU version")
+            cpu_params = params.copy()
+            cpu_params.update({
+                'tree_method': 'hist',  # CPU histogram method
+                'n_jobs': -1,  # Use all CPU cores
+                'verbosity': 0
+            })
+            base = XGBRegressor(**cpu_params)
         
-        model = MultiOutputRegressor(base)
+        model = MultiOutputRegressor(base, n_jobs=1)  # Don't parallelize MultiOutputRegressor to avoid conflicts
         model.fit(X_train, y_train)
         return model
     except Exception as e:
-        print(f"XGBoost training failed: {e}")  # XGBoost training failed: {e}
+        print(f"XGBoost training failed: {e}")
         raise RuntimeError(f"XGBoost training failed: {e}")
 
 def train_lgbm(X_train, y_train, params: dict):
-    """Train LightGBM regressor with multi-output support - GPU preferred."""
+    """Train LightGBM regressor with multi-output support - GPU optimized."""
     try:
         # Check data validity
         if np.any(np.isnan(X_train)) or np.any(np.isinf(X_train)):
-            print("Detected NaN or Inf values, cleaning")  # Detected NaN or Inf values, cleaning
+            print("Detected NaN or Inf values, cleaning")
             X_train = np.nan_to_num(X_train, nan=0.0, posinf=1.0, neginf=-1.0)
         if np.any(np.isnan(y_train)) or np.any(np.isinf(y_train)):
-            print("Detected NaN or Inf values, cleaning")  # Detected NaN or Inf values, cleaning
+            print("Detected NaN or Inf values, cleaning")
             y_train = np.nan_to_num(y_train, nan=0.0, posinf=1.0, neginf=-1.0)
         
         # Try to use GPU, if unavailable use CPU
-        if torch.cuda.is_available():
-            print("Using LightGBM GPU version")  # Using LightGBM GPU version
+        if torch.cuda.is_available() and LGB_GPU_AVAILABLE:
+            print("Using LightGBM GPU version")
             gpu_params = params.copy()
             gpu_params.update({
                 'device': 'gpu',
                 'gpu_platform_id': 0,
                 'gpu_device_id': 0,
-                'verbose': -1
+                'verbose': -1,
+                'n_jobs': -1  # Use all CPU threads for data loading
             })
             base = LGBMRegressor(**gpu_params)
         else:
-            print("GPU unavailable, using LightGBM CPU version")  # GPU unavailable, using LightGBM CPU version
-            base = LGBMRegressor(**params)
+            print("GPU unavailable, using LightGBM CPU version")
+            cpu_params = params.copy()
+            cpu_params.update({
+                'device': 'cpu',
+                'n_jobs': -1,  # Use all CPU cores
+                'verbose': -1
+            })
+            base = LGBMRegressor(**cpu_params)
         
-        model = MultiOutputRegressor(base)
+        model = MultiOutputRegressor(base, n_jobs=1)  # Don't parallelize MultiOutputRegressor to avoid conflicts
         model.fit(X_train, y_train)
         return model
     except Exception as e:
-        print(f"LightGBM training failed: {e}")  # LightGBM training failed: {e}
+        print(f"LightGBM training failed: {e}")
         raise RuntimeError(f"LightGBM training failed: {e}")
 
 def train_linear(X_train, y_train, params: dict):
