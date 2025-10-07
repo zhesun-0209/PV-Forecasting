@@ -86,51 +86,28 @@ def train_rf(X_train, y_train, params: dict):
         n_est = params.get('n_estimators', 100)
         max_d = params.get('max_depth', 10)
         
-        rf_params = {
+        # cuML GPU parameters (no n_jobs!)
+        cuml_params = {
             'n_estimators': n_est,
             'max_depth': max_d,
-            'random_state': 42,
-            'n_jobs': -1  # Use all CPU cores for sklearn
+            'random_state': 42
+            # Note: cuML does NOT support n_jobs parameter
         }
         
-        print(f"Training RF: n_estimators={n_est}, max_depth={max_d}, samples={len(X_train)}, features={X_train.shape[1]}")
+        print(f"Training RF GPU (cuML): n_estimators={n_est}, max_depth={max_d}, samples={len(X_train)}, features={X_train.shape[1]}")
         
-        # Try GPU version with direct NumPy arrays (cuML compatibility)
-        if GPU_RF_AVAILABLE:
-            try:
-                from sklearn.multioutput import MultiOutputRegressor
-                
-                print("Attempting Random Forest GPU (cuML)...")
-                
-                # cuML works directly with NumPy arrays (no cuDF needed!)
-                base = cuRandomForestRegressor(**rf_params)
-                model = MultiOutputRegressor(base, n_jobs=1)
-                model.fit(X_train, y_train)
-                
-                print("✓ Random Forest GPU (cuML) training successful")
-                return model
-                
-            except Exception as e:
-                error_type = type(e).__name__
-                print(f"✗ cuML GPU failed ({error_type}: {str(e)[:100]})")
-                
-                # Check for common resource-related errors
-                if any(keyword in str(e).lower() for keyword in ['memory', 'allocation', 'resource', 'cuda', 'out of']):
-                    print("  → Resource issue detected (memory/GPU exhausted)")
-                    print("  → This is common with large datasets or high n_estimators")
-                
-                print("  → Falling back to sklearn CPU (stable and reliable)")
-                # Fall through to CPU version
+        # GPU-only version (cuML)
+        if not GPU_RF_AVAILABLE:
+            raise RuntimeError("cuML GPU not available! Cannot train Random Forest.")
         
-        # CPU version (sklearn) - Always works
-        print("Using Random Forest CPU (sklearn) - stable fallback")
-        from sklearn.ensemble import RandomForestRegressor
         from sklearn.multioutput import MultiOutputRegressor
         
-        base = RandomForestRegressor(**rf_params)
-        model = MultiOutputRegressor(base, n_jobs=1)  # Don't parallelize wrapper
+        # cuML works directly with NumPy arrays (no cuDF needed!)
+        base = cuRandomForestRegressor(**cuml_params)
+        model = MultiOutputRegressor(base, n_jobs=1)
         model.fit(X_train, y_train)
-        print("✓ Random Forest CPU (sklearn) training successful")
+        
+        print("✓ Random Forest GPU (cuML) training successful")
         return model
         
     except Exception as e:
