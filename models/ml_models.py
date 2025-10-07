@@ -89,22 +89,17 @@ def train_rf(X_train, y_train, params: dict):
             'random_state': 42
         }
         
-        # Try GPU version with cuDF conversion
+        # Try GPU version with direct NumPy arrays (cuML compatibility)
         if GPU_RF_AVAILABLE:
             try:
-                import cudf
-                import cupy as cp
                 from sklearn.multioutput import MultiOutputRegressor
                 
                 print("Using Random Forest GPU (cuML)")
                 
-                # Convert to cuDF for cuML (key step!)
-                X_cudf = cudf.DataFrame(X_train)
-                y_cudf = cudf.DataFrame(y_train)
-                
+                # cuML works directly with NumPy arrays (no cuDF needed!)
                 base = cuRandomForestRegressor(**rf_params)
                 model = MultiOutputRegressor(base)
-                model.fit(X_cudf, y_cudf)
+                model.fit(X_train, y_train)  # 直接使用NumPy数组
                 return model
             except Exception as e:
                 print(f"cuML GPU failed ({e}), falling back to sklearn CPU")
@@ -203,19 +198,14 @@ def train_linear(X_train, y_train, params: dict):
                 print("Detected NaN or Inf values, cleaning")
                 y_train = np.nan_to_num(y_train, nan=0.0, posinf=1.0, neginf=-1.0)
             
-            # Try GPU version with cuDF conversion
+            # Try GPU version with direct NumPy arrays (cuML compatibility)
             if GPU_LINEAR_AVAILABLE:
                 try:
-                    import cudf
-                    
                     print("Using Linear Regression GPU (cuML)")
                     
-                    # Convert to cuDF for cuML (key step!)
-                    X_cudf = cudf.DataFrame(X_train)
-                    y_cudf = cudf.DataFrame(y_train)
-                    
+                    # cuML works directly with NumPy arrays (no cuDF needed!)
                     model = cuLinearRegression()
-                    model.fit(X_cudf, y_cudf)
+                    model.fit(X_train, y_train)  # 直接使用NumPy数组
                     return model
                 except Exception as e:
                     print(f"cuML GPU failed ({e}), falling back to sklearn CPU")
