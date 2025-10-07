@@ -58,7 +58,6 @@ def generate_all_configs():
     ]
 
     # === 1. DL models: PV-based experiments ===
-    # === 1. DL models: PV-based experiments ===
     for model in dl_models:
         for complexity in complexities:
             for lookback in lookbacks:
@@ -246,9 +245,15 @@ def run_all_experiments():
             else:
                 X_fcst_train = X_fcst_val = X_fcst_test = None
 
-            train_data = (X_hist_train, X_fcst_train, y_train, [], [])
-            val_data = (X_hist_val, X_fcst_val, y_val, [], [])
-            test_data = (X_hist_test, X_fcst_test, y_test, [], [])
+            # Split hours and dates
+            train_hours = np.array([hours[i] for i in train_idx])
+            val_hours = np.array([hours[i] for i in val_idx])
+            test_hours = np.array([hours[i] for i in test_idx])
+            test_dates = [dates[i] for i in test_idx]
+
+            train_data = (X_hist_train, X_fcst_train, y_train, train_hours, [])
+            val_data = (X_hist_val, X_fcst_val, y_val, val_hours, [])
+            test_data = (X_hist_test, X_fcst_test, y_test, test_hours, test_dates)
             scalers = (scaler_hist, scaler_fcst, scaler_target)
 
             # choose training function
