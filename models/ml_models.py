@@ -99,41 +99,27 @@ def train_rf(X_train, y_train, params: dict):
         if GPU_RF_AVAILABLE:
             try:
                 from sklearn.multioutput import MultiOutputRegressor
-                import signal
                 
                 print("Attempting Random Forest GPU (cuML)...")
-                
-                # Set alarm for timeout (not available on Windows, skip on Windows)
-                try:
-                    # This will only work on Unix/Linux (Colab)
-                    def timeout_handler(signum, frame):
-                        raise TimeoutError("RF GPU training timeout")
-                    signal.signal(signal.SIGALRM, timeout_handler)
-                    signal.alarm(600)  # 10 minutes timeout
-                except (AttributeError, ValueError):
-                    # Windows doesn't support SIGALRM, skip timeout
-                    pass
                 
                 # cuML works directly with NumPy arrays (no cuDF needed!)
                 base = cuRandomForestRegressor(**rf_params)
                 model = MultiOutputRegressor(base, n_jobs=1)
                 model.fit(X_train, y_train)
                 
-                try:
-                    signal.alarm(0)  # Cancel alarm
-                except (AttributeError, ValueError):
-                    pass
-                
                 print("✓ Random Forest GPU (cuML) training successful")
                 return model
                 
-            except (Exception, TimeoutError) as e:
-                print(f"✗ cuML GPU failed or timeout ({type(e).__name__}: {e})")
-                print("  Falling back to sklearn CPU (this is safe and expected)")
-                try:
-                    signal.alarm(0)  # Cancel alarm if set
-                except (AttributeError, ValueError):
-                    pass
+            except Exception as e:
+                error_type = type(e).__name__
+                print(f"✗ cuML GPU failed ({error_type}: {str(e)[:100]})")
+                
+                # Check for common resource-related errors
+                if any(keyword in str(e).lower() for keyword in ['memory', 'allocation', 'resource', 'cuda', 'out of']):
+                    print("  → Resource issue detected (memory/GPU exhausted)")
+                    print("  → This is common with large datasets or high n_estimators")
+                
+                print("  → Falling back to sklearn CPU (stable and reliable)")
                 # Fall through to CPU version
         
         # CPU version (sklearn) - Always works
