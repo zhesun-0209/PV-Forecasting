@@ -139,27 +139,20 @@ def train_xgb(X_train, y_train, params: dict):
         print(f"  Data: samples={len(X_train)}, features={X_train.shape[1]}, outputs={y_train.shape[1]}")
         print(f"  Total trees to train: {n_est} × {y_train.shape[1]} outputs = {n_est * y_train.shape[1]}")
         
-        # Try to use GPU, if unavailable use CPU
-        if torch.cuda.is_available() and XGB_GPU_AVAILABLE:
-            print("  Using XGBoost GPU (gpu_hist + gpu_predictor)")
-            gpu_params = params.copy()
-            gpu_params.update({
-                'tree_method': 'gpu_hist',  # GPU-optimized histogram algorithm
-                'device': 'cuda',
-                'verbosity': 1,  # Show progress
-                'n_jobs': 1,  # Single thread for GPU
-                'predictor': 'gpu_predictor'  # GPU predictor for inference
-            })
-            base = XGBRegressor(**gpu_params)
-        else:
-            print("  GPU unavailable, using XGBoost CPU version")
-            cpu_params = params.copy()
-            cpu_params.update({
-                'tree_method': 'hist',  # CPU histogram method
-                'n_jobs': -1,  # Use all CPU cores
-                'verbosity': 1
-            })
-            base = XGBRegressor(**cpu_params)
+        # GPU-only version (no CPU fallback)
+        if not (torch.cuda.is_available() and XGB_GPU_AVAILABLE):
+            raise RuntimeError("XGBoost GPU not available! Cannot train.")
+        
+        print("  Using XGBoost GPU (gpu_hist + gpu_predictor)")
+        gpu_params = params.copy()
+        gpu_params.update({
+            'tree_method': 'gpu_hist',  # GPU-optimized histogram algorithm
+            'device': 'cuda',
+            'verbosity': 1,  # Show progress
+            # Note: n_jobs is for CPU threading, not needed for GPU
+            'predictor': 'gpu_predictor'  # GPU predictor for inference
+        })
+        base = XGBRegressor(**gpu_params)
         
         print("  Starting training...")
         start_time = time.time()
@@ -179,6 +172,8 @@ def train_xgb(X_train, y_train, params: dict):
 def train_lgbm(X_train, y_train, params: dict):
     """Train LightGBM regressor with multi-output support - GPU optimized."""
     try:
+        import time
+        
         # Check data validity
         if np.any(np.isnan(X_train)) or np.any(np.isinf(X_train)):
             print("Detected NaN or Inf values, cleaning")
@@ -187,33 +182,41 @@ def train_lgbm(X_train, y_train, params: dict):
             print("Detected NaN or Inf values, cleaning")
             y_train = np.nan_to_num(y_train, nan=0.0, posinf=1.0, neginf=-1.0)
         
-        # Try to use GPU, if unavailable use CPU
-        if torch.cuda.is_available() and LGB_GPU_AVAILABLE:
-            print("Using LightGBM GPU version")
-            gpu_params = params.copy()
-            gpu_params.update({
-                'device': 'gpu',
-                'gpu_platform_id': 0,
-                'gpu_device_id': 0,
-                'verbose': -1,
-                'n_jobs': -1  # Use all CPU threads for data loading
-            })
-            base = LGBMRegressor(**gpu_params)
-        else:
-            print("GPU unavailable, using LightGBM CPU version")
-            cpu_params = params.copy()
-            cpu_params.update({
-                'device': 'cpu',
-                'n_jobs': -1,  # Use all CPU cores
-                'verbose': -1
-            })
-            base = LGBMRegressor(**cpu_params)
+        n_est = params.get('n_estimators', 100)
+        max_d = params.get('max_depth', 10)
+        lr = params.get('learning_rate', 0.1)
         
-        model = MultiOutputRegressor(base, n_jobs=1)  # Don't parallelize MultiOutputRegressor to avoid conflicts
+        print(f"Training LightGBM: n_estimators={n_est}, max_depth={max_d}, lr={lr}")
+        print(f"  Data: samples={len(X_train)}, features={X_train.shape[1]}, outputs={y_train.shape[1]}")
+        
+        # GPU-only version (no CPU fallback)
+        if not (torch.cuda.is_available() and LGB_GPU_AVAILABLE):
+            raise RuntimeError("LightGBM GPU not available! Cannot train.")
+        
+        print("  Using LightGBM GPU")
+        gpu_params = params.copy()
+        gpu_params.update({
+            'device': 'gpu',
+            'gpu_platform_id': 0,
+            'gpu_device_id': 0,
+            'verbose': 0  # Show some progress (0=warning, -1=silent, 1=info)
+            # Note: n_jobs not needed for GPU mode
+        })
+        base = LGBMRegressor(**gpu_params)
+        
+        print("  Starting training...")
+        start_time = time.time()
+        model = MultiOutputRegressor(base, n_jobs=1)
         model.fit(X_train, y_train)
+        elapsed = time.time() - start_time
+        
+        print(f"✓ LightGBM training completed in {elapsed:.1f}s ({elapsed/60:.1f}min)")
         return model
+        
     except Exception as e:
-        print(f"LightGBM training failed: {e}")
+        print(f"✗ LightGBM training failed: {e}")
+        import traceback
+        traceback.print_exc()
         raise RuntimeError(f"LightGBM training failed: {e}")
 
 def train_linear(X_train, y_train, params: dict):
