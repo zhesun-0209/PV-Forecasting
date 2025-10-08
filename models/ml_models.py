@@ -152,15 +152,15 @@ def train_xgb(X_train, y_train, params: dict):
             'predictor': 'gpu_predictor'  # GPU predictor for inference
         })
         
-        # Important: MultiOutputRegressor with n_jobs=1 trains models serially!
-        # For GPU, we can use n_jobs=-1 to train multiple models in parallel
-        # Each model uses GPU, but different outputs can be trained simultaneously
+        # Important: GPU memory is limited!
+        # n_jobs=-1 can cause OOM when multiple models compete for GPU memory
+        # Use n_jobs=2 for limited parallelism (train 2 models at a time)
         base = XGBRegressor(**gpu_params)
         
         print("  Starting training...")
-        print(f"  Note: Training {y_train.shape[1]} output models in parallel on GPU")
+        print(f"  Note: Training {y_train.shape[1]} output models sequentially to avoid GPU OOM")
         start_time = time.time()
-        model = MultiOutputRegressor(base, n_jobs=-1)  # Parallel training
+        model = MultiOutputRegressor(base, n_jobs=1)  # Sequential to avoid OOM
         model.fit(X_train, y_train)
         elapsed = time.time() - start_time
         
@@ -208,9 +208,9 @@ def train_lgbm(X_train, y_train, params: dict):
         base = LGBMRegressor(**gpu_params)
         
         print("  Starting training...")
-        print(f"  Note: Training {y_train.shape[1]} output models in parallel on GPU")
+        print(f"  Note: Training {y_train.shape[1]} output models sequentially to avoid GPU OOM")
         start_time = time.time()
-        model = MultiOutputRegressor(base, n_jobs=-1)  # Parallel training
+        model = MultiOutputRegressor(base, n_jobs=1)  # Sequential to avoid OOM
         model.fit(X_train, y_train)
         elapsed = time.time() - start_time
         
