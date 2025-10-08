@@ -149,14 +149,18 @@ def train_xgb(X_train, y_train, params: dict):
             'tree_method': 'gpu_hist',  # GPU-optimized histogram algorithm
             'device': 'cuda',
             'verbosity': 1,  # Show progress
-            # Note: n_jobs is for CPU threading, not needed for GPU
             'predictor': 'gpu_predictor'  # GPU predictor for inference
         })
+        
+        # Important: MultiOutputRegressor with n_jobs=1 trains models serially!
+        # For GPU, we can use n_jobs=-1 to train multiple models in parallel
+        # Each model uses GPU, but different outputs can be trained simultaneously
         base = XGBRegressor(**gpu_params)
         
         print("  Starting training...")
+        print(f"  Note: Training {y_train.shape[1]} output models in parallel on GPU")
         start_time = time.time()
-        model = MultiOutputRegressor(base, n_jobs=1)
+        model = MultiOutputRegressor(base, n_jobs=-1)  # Parallel training
         model.fit(X_train, y_train)
         elapsed = time.time() - start_time
         
@@ -200,13 +204,13 @@ def train_lgbm(X_train, y_train, params: dict):
             'gpu_platform_id': 0,
             'gpu_device_id': 0,
             'verbose': 0  # Show some progress (0=warning, -1=silent, 1=info)
-            # Note: n_jobs not needed for GPU mode
         })
         base = LGBMRegressor(**gpu_params)
         
         print("  Starting training...")
+        print(f"  Note: Training {y_train.shape[1]} output models in parallel on GPU")
         start_time = time.time()
-        model = MultiOutputRegressor(base, n_jobs=1)
+        model = MultiOutputRegressor(base, n_jobs=-1)  # Parallel training
         model.fit(X_train, y_train)
         elapsed = time.time() - start_time
         
