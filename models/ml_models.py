@@ -121,6 +121,8 @@ def train_rf(X_train, y_train, params: dict):
 def train_xgb(X_train, y_train, params: dict):
     """Train XGBoost regressor with multi-output support - GPU optimized."""
     try:
+        import time
+        
         # Check data validity
         if np.any(np.isnan(X_train)) or np.any(np.isinf(X_train)):
             print("Detected NaN or Inf values, cleaning")
@@ -129,33 +131,49 @@ def train_xgb(X_train, y_train, params: dict):
             print("Detected NaN or Inf values, cleaning")
             y_train = np.nan_to_num(y_train, nan=0.0, posinf=1.0, neginf=-1.0)
         
+        n_est = params.get('n_estimators', 100)
+        max_d = params.get('max_depth', 10)
+        lr = params.get('learning_rate', 0.1)
+        
+        print(f"Training XGBoost: n_estimators={n_est}, max_depth={max_d}, lr={lr}")
+        print(f"  Data: samples={len(X_train)}, features={X_train.shape[1]}, outputs={y_train.shape[1]}")
+        print(f"  Total trees to train: {n_est} × {y_train.shape[1]} outputs = {n_est * y_train.shape[1]}")
+        
         # Try to use GPU, if unavailable use CPU
         if torch.cuda.is_available() and XGB_GPU_AVAILABLE:
-            print("Using XGBoost GPU version (gpu_hist)")
+            print("  Using XGBoost GPU (gpu_hist + gpu_predictor)")
             gpu_params = params.copy()
             gpu_params.update({
                 'tree_method': 'gpu_hist',  # GPU-optimized histogram algorithm
                 'device': 'cuda',
-                'verbosity': 0,
-                'n_jobs': -1,  # Use all available CPU threads for data loading
+                'verbosity': 1,  # Show progress
+                'n_jobs': 1,  # Single thread for GPU
                 'predictor': 'gpu_predictor'  # GPU predictor for inference
             })
             base = XGBRegressor(**gpu_params)
         else:
-            print("GPU unavailable, using XGBoost CPU version")
+            print("  GPU unavailable, using XGBoost CPU version")
             cpu_params = params.copy()
             cpu_params.update({
                 'tree_method': 'hist',  # CPU histogram method
                 'n_jobs': -1,  # Use all CPU cores
-                'verbosity': 0
+                'verbosity': 1
             })
             base = XGBRegressor(**cpu_params)
         
-        model = MultiOutputRegressor(base, n_jobs=1)  # Don't parallelize MultiOutputRegressor to avoid conflicts
+        print("  Starting training...")
+        start_time = time.time()
+        model = MultiOutputRegressor(base, n_jobs=1)
         model.fit(X_train, y_train)
+        elapsed = time.time() - start_time
+        
+        print(f"✓ XGBoost training completed in {elapsed:.1f}s ({elapsed/60:.1f}min)")
         return model
+        
     except Exception as e:
-        print(f"XGBoost training failed: {e}")
+        print(f"✗ XGBoost training failed: {e}")
+        import traceback
+        traceback.print_exc()
         raise RuntimeError(f"XGBoost training failed: {e}")
 
 def train_lgbm(X_train, y_train, params: dict):
