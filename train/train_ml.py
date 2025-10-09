@@ -4,7 +4,7 @@ import joblib
 import numpy as np
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 from sklearn.linear_model import LinearRegression
-from eval.metrics_utils import calculate_metrics, calculate_mse
+from eval.metrics_utils import calculate_metrics, calculate_mse, calculate_daily_avg_metrics
 from utils.gpu_utils import get_gpu_memory_used
 from models.ml_models import train_rf, train_xgb, train_lgbm, train_linear
 
@@ -94,15 +94,35 @@ def train_ml_model(
     else:
         raise ValueError(f"Unsupported ML model: {name}")
 
+    # Clear GPU memory before training to avoid OOM
+    import gc
+    import torch
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+        gc.collect()
+    
     start_time = time.time()
     model = trainer(X_train_flat, y_train_flat, params)
     train_time = time.time() - start_time
 
-    # Measure inference time
+    # Measure inference time on test set with batch prediction to avoid GPU OOM
     inference_start = time.time()
-    preds_flat = model.predict(X_test_flat)
+    
+    # Batch prediction to handle large test sets (avoid GPU OOM)
+    batch_size = 1000  # Predict 1000 samples at a time
+    n_test = len(X_test_flat)
+    preds_list = []
+    
+    print(f"  Predicting test set: {n_test} samples (batch_size={batch_size})")
+    
+    for i in range(0, n_test, batch_size):
+        end_idx = min(i + batch_size, n_test)
+        batch_preds = model.predict(X_test_flat[i:end_idx])
+        preds_list.append(batch_preds)
+    
+    preds_flat = np.vstack(preds_list)
     inference_time = time.time() - inference_start
-    train_preds_flat = model.predict(X_train_flat)
+    print(f"  Prediction completed in {inference_time:.2f}s")
 
     # Inverse transform using scaler_target
     fh = int(config['future_hours'])
@@ -118,17 +138,19 @@ def train_ml_model(
 
     # Calculate all evaluation metrics
     # Important: metrics calculated based on inverse-transformed values (capacity factor percentage, 0-100)
-    # Calculate MSE
-    mse = calculate_mse(y_matrix, p_matrix)
     
-    # Calculate all metrics
-    all_metrics = calculate_metrics(y_matrix, p_matrix)
+    # Calculate metrics using daily average method (recommended for day-ahead forecasting)
+    # This calculates RMSE for each day, then averages across days
+    daily_metrics = calculate_daily_avg_metrics(y_matrix, p_matrix)
     
-    # Extract basic metrics
-    rmse = all_metrics['rmse']
-    mae = all_metrics['mae']
+    # Extract metrics
+    mse = daily_metrics['rmse'] ** 2  # Convert RMSE back to MSE for compatibility
+    rmse = daily_metrics['rmse']
+    mae = daily_metrics['mae']
     
-    train_mse = mean_squared_error(y_train_flat, train_preds_flat)
+    # Also extract 24h-ahead predictions for saving to CSV (for visualization)
+    from eval.prediction_utils import extract_one_hour_ahead_predictions
+    final_preds_24h, final_gt_24h = extract_one_hour_ahead_predictions(p_matrix, y_matrix)
 
     # Get GPU memory usage
     gpu_memory_used = get_gpu_memory_used()
@@ -144,23 +166,25 @@ def train_ml_model(
 
     metrics = {
         'mse':            mse,
-        'rmse':           rmse,
-        'mae':            mae,
-        'nrmse':          all_metrics['nrmse'],
-        'r_square':       all_metrics['r_square'],
-        'r2':             all_metrics['r2'],  # Add r2 alias
-        'smape':          all_metrics['smape'],
+        'rmse':           rmse,  # Daily averaged RMSE
+        'mae':            mae,   # Daily averaged MAE
+        'nrmse':          rmse / np.mean(y_matrix[y_matrix > 0]) if np.any(y_matrix > 0) else np.nan,
+        'r_square':       daily_metrics['r2'],
+        'r2':             daily_metrics['r2'],
+        'smape':          np.nan,  # Not calculated for daily avg
         'best_epoch':     np.nan,  # ML models don't have epoch concept
         'final_lr':       np.nan,  # ML models don't have learning rate concept
         'gpu_memory_used': gpu_memory_used,
         'train_time_sec': round(train_time, 2),
         'inference_time_sec': round(inference_time, 2),
         'param_count':    X_train_flat.shape[1],
-        'samples_count':  len(y_matrix),
-        'predictions':    p_matrix,
-        'y_true':         y_matrix,
+        'samples_count':  len(final_preds_24h),  # Number of 24h-ahead predictions for CSV
+        'predictions':    final_preds_24h,  # 1D array of 24h-ahead predictions (for CSV)
+        'y_true':         final_gt_24h,     # 1D array of corresponding ground truth (for CSV)
+        'predictions_all': p_matrix,  # Full multi-step predictions (for potential detailed analysis)
+        'y_true_all':     y_matrix,   # Full ground truth (for potential detailed analysis)
         'dates':          dates_test,
-        'epoch_logs':     [{'epoch': 1, 'train_loss': train_mse, 'val_loss': mse}],
+        'epoch_logs':     [{'epoch': 1, 'train_loss': np.nan, 'val_loss': mse}],  # ML models don't have train_loss
         'inverse_transformed': False  # Capacity Factor doesn't need inverse normalization
     }
 

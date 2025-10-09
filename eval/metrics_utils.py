@@ -114,3 +114,64 @@ def calculate_mse(y_true, y_pred):
     
     mse = np.mean((y_true_clean - y_pred_clean) ** 2)
     return round(mse, 4)
+
+
+def calculate_daily_avg_metrics(y_true, y_pred):
+    """
+    Calculate metrics using daily average method
+    
+    For day-ahead forecasting, calculate RMSE for each day separately,
+    then average across all days. This approach better reflects daily
+    prediction performance compared to flattening all values.
+    
+    Args:
+        y_true: True values (n_days, 24)
+        y_pred: Predicted values (n_days, 24)
+    
+    Returns:
+        Dictionary containing daily-averaged metrics
+    """
+    n_days = y_true.shape[0]
+    
+    daily_rmses = []
+    daily_maes = []
+    
+    # Calculate metrics for each day
+    for i in range(n_days):
+        day_true = y_true[i]
+        day_pred = y_pred[i]
+        
+        # Remove NaN values
+        mask = ~(np.isnan(day_true) | np.isnan(day_pred))
+        day_true_clean = day_true[mask]
+        day_pred_clean = day_pred[mask]
+        
+        if len(day_true_clean) > 0:
+            daily_rmse = np.sqrt(np.mean((day_true_clean - day_pred_clean) ** 2))
+            daily_mae = np.mean(np.abs(day_true_clean - day_pred_clean))
+            daily_rmses.append(daily_rmse)
+            daily_maes.append(daily_mae)
+    
+    # Average across all days
+    rmse_daily_avg = np.mean(daily_rmses) if len(daily_rmses) > 0 else np.nan
+    mae_daily_avg = np.mean(daily_maes) if len(daily_maes) > 0 else np.nan
+    
+    # Calculate R² on all flattened data (R² doesn't benefit from daily averaging)
+    y_true_flat = y_true.flatten()
+    y_pred_flat = y_pred.flatten()
+    mask = ~(np.isnan(y_true_flat) | np.isnan(y_pred_flat))
+    y_true_clean = y_true_flat[mask]
+    y_pred_clean = y_pred_flat[mask]
+    
+    if len(y_true_clean) > 0:
+        r_square = r2_score(y_true_clean, y_pred_clean)
+    else:
+        r_square = np.nan
+    
+    return {
+        'mae': round(mae_daily_avg, 4),
+        'rmse': round(rmse_daily_avg, 4),
+        'r2': round(r_square, 4),
+        'r_square': round(r_square, 4),
+        'n_days': len(daily_rmses)
+    }

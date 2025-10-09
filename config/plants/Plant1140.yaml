@@ -1,0 +1,66 @@
+data_path: data\Project1140.csv
+end_date: '2024-09-27'
+future_hours: 24
+has_ideal_nwp: true
+plant_id: '1140'
+plant_name: Project 1140
+results_base_dir: results
+save_options:
+  save_excel_results: false
+  save_model: false
+  save_predictions: false
+  save_training_log: false
+start_date: '2022-01-01'
+test_ratio: 0.1
+train_ratio: 0.8
+val_ratio: 0.1
+weather_category: all_weather
+shuffle_split: false
+random_seed: 42
+past_hours: 24
+dl_params:
+  low:
+    epochs: 20
+    batch_size: 64
+    learning_rate: 0.001
+    patience: 10
+    min_delta: 0.001
+    weight_decay: 0.0001
+    d_model: 16
+    hidden_dim: 8
+    num_heads: 2
+    num_layers: 1
+    dropout: 0.1
+    tcn_channels:
+    - 8
+    - 16
+    kernel_size: 3
+  high:
+    epochs: 50
+    batch_size: 64
+    learning_rate: 0.001
+    patience: 10
+    min_delta: 0.001
+    weight_decay: 0.0001
+    d_model: 32
+    hidden_dim: 16
+    num_heads: 2
+    num_layers: 2
+    dropout: 0.1
+    tcn_channels:
+    - 16
+    - 32
+    kernel_size: 3
+ml_params:
+  low:
+    n_estimators: 10
+    max_depth: 1
+    learning_rate: 0.2
+    random_state: 42
+    verbosity: -1
+  high:
+    n_estimators: 30
+    max_depth: 3
+    learning_rate: 0.1
+    random_state: 42
+    verbosity: -1

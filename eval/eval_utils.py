@@ -33,7 +33,7 @@ def save_results(
                  'dates' (n), 'epoch_logs' (list of dicts)
         dates:   List of datetime strings
         y_true, Xh_test, Xf_test: Used for legacy or optional plots
-        config:  Dictionary with keys like 'save_dir', 'model', 'plot_days', 'scaler_target'
+        config:  Dictionary with keys like 'save_dir', 'model', 'scaler_target'
     """
     save_dir = config['save_dir']
     os.makedirs(save_dir, exist_ok=True)
@@ -104,10 +104,7 @@ def save_results(
             os.path.join(save_dir, "training_log.csv"), index=False
         )
 
-    # ===== 4. Save plots =====
-    days = config.get('plot_days', None)
-    
-    
+    # ===== 4. Save Excel results =====
     if save_options.get('save_excel_results', True):
         result_data = {
             'config': {
@@ -147,8 +144,7 @@ def save_results(
             save_dir=save_dir
         )
     else:
-
-    print(f"[INFO] Results saved in {save_dir}")
+        print(f"[INFO] Results saved in {save_dir}")
 
 def save_season_hour_results(
     model,

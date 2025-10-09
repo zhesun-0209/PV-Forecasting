@@ -88,8 +88,9 @@ class TCNModel(nn.Module):
     def forward(self, hist: torch.Tensor, fcst: torch.Tensor = None) -> torch.Tensor:
         last = None
         
-        # Process historical data (if exists)
-        if self.encoder is not None and hist.shape[-1] > 0:
+        # Process historical data (if exists and has valid sequence length)
+        # Check sequence length first (hist.shape[1] is the sequence length)
+        if self.encoder is not None and hist.shape[1] > 0 and hist.shape[-1] > 0:
             x = hist.permute(0, 2, 1)  # (B, hist_dim, seq_len)
             
             # Check input length, use simple linear layer if too short

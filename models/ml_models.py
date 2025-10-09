@@ -83,8 +83,8 @@ def train_rf(X_train, y_train, params: dict):
             print("Detected NaN or Inf values, cleaning")
             y_train = np.nan_to_num(y_train, nan=0.0, posinf=1.0, neginf=-1.0)
         
-        n_est = params.get('n_estimators', 100)
-        max_d = params.get('max_depth', 10)
+        n_est = params.get('n_estimators', 30)
+        max_d = params.get('max_depth', 3)
         
         # cuML GPU parameters (no n_jobs!)
         cuml_params = {
@@ -94,24 +94,27 @@ def train_rf(X_train, y_train, params: dict):
             # Note: cuML does NOT support n_jobs parameter
         }
         
-        print(f"Training RF GPU (cuML): n_estimators={n_est}, max_depth={max_d}, samples={len(X_train)}, features={X_train.shape[1]}")
-        
-        # GPU-only version (cuML)
-        if not GPU_RF_AVAILABLE:
-            raise RuntimeError("cuML GPU not available! Cannot train Random Forest.")
-        
         from sklearn.multioutput import MultiOutputRegressor
         
-        # cuML works directly with NumPy arrays (no cuDF needed!)
-        base = cuRandomForestRegressor(**cuml_params)
-        model = MultiOutputRegressor(base, n_jobs=1)
-        model.fit(X_train, y_train)
+        if GPU_RF_AVAILABLE:
+            print(f"Training RF GPU (cuML): n_estimators={n_est}, max_depth={max_d}, samples={len(X_train)}, features={X_train.shape[1]}")
+            # cuML works directly with NumPy arrays
+            base = cuRandomForestRegressor(**cuml_params)
+            model = MultiOutputRegressor(base, n_jobs=1)
+            model.fit(X_train, y_train)
+            print("[OK] Random Forest GPU (cuML) training successful")
+        else:
+            print(f"Training RF CPU (sklearn): n_estimators={n_est}, max_depth={max_d}, samples={len(X_train)}, features={X_train.shape[1]}")
+            # Use sklearn fallback with CPU
+            base = cuRandomForestRegressor(**cuml_params)  # Already imported as sklearn RF
+            model = MultiOutputRegressor(base, n_jobs=-1)  # Use all CPU cores
+            model.fit(X_train, y_train)
+            print("[OK] Random Forest CPU (sklearn) training successful")
         
-        print("✓ Random Forest GPU (cuML) training successful")
         return model
         
     except Exception as e:
-        print(f"✗ Random Forest training completely failed: {e}")
+        print(f"[ERROR] Random Forest training completely failed: {e}")
         import traceback
         traceback.print_exc()
         raise RuntimeError(f"Random Forest training failed: {e}")
@@ -131,8 +134,8 @@ def train_xgb(X_train, y_train, params: dict):
             print("Detected NaN or Inf values, cleaning")
             y_train = np.nan_to_num(y_train, nan=0.0, posinf=1.0, neginf=-1.0)
         
-        n_est = params.get('n_estimators', 100)
-        max_d = params.get('max_depth', 10)
+        n_est = params.get('n_estimators', 30)
+        max_d = params.get('max_depth', 3)
         lr = params.get('learning_rate', 0.1)
         
         print(f"Training XGBoost: n_estimators={n_est}, max_depth={max_d}, lr={lr}")
@@ -143,13 +146,12 @@ def train_xgb(X_train, y_train, params: dict):
         if not (torch.cuda.is_available() and XGB_GPU_AVAILABLE):
             raise RuntimeError("XGBoost GPU not available! Cannot train.")
         
-        print("  Using XGBoost GPU (gpu_hist + gpu_predictor)")
+        print("  Using XGBoost GPU (device=cuda)")
         gpu_params = params.copy()
         gpu_params.update({
-            'tree_method': 'gpu_hist',  # GPU-optimized histogram algorithm
-            'device': 'cuda',
-            'verbosity': 1,  # Show progress
-            'predictor': 'gpu_predictor'  # GPU predictor for inference
+            'tree_method': 'hist',  # Use histogram algorithm (auto GPU with device='cuda')
+            'device': 'cuda',       # Unified GPU control (XGBoost 2.0+ style)
+            'verbosity': 0,         # Silent mode (suppress warnings)
         })
         
         # Important: GPU memory is limited!
@@ -164,11 +166,11 @@ def train_xgb(X_train, y_train, params: dict):
         model.fit(X_train, y_train)
         elapsed = time.time() - start_time
         
-        print(f"✓ XGBoost training completed in {elapsed:.1f}s ({elapsed/60:.1f}min)")
+        print(f"[OK] XGBoost training completed in {elapsed:.1f}s ({elapsed/60:.1f}min)")
         return model
         
     except Exception as e:
-        print(f"✗ XGBoost training failed: {e}")
+        print(f"[ERROR] XGBoost training failed: {e}")
         import traceback
         traceback.print_exc()
         raise RuntimeError(f"XGBoost training failed: {e}")
@@ -186,8 +188,8 @@ def train_lgbm(X_train, y_train, params: dict):
             print("Detected NaN or Inf values, cleaning")
             y_train = np.nan_to_num(y_train, nan=0.0, posinf=1.0, neginf=-1.0)
         
-        n_est = params.get('n_estimators', 100)
-        max_d = params.get('max_depth', 10)
+        n_est = params.get('n_estimators', 30)
+        max_d = params.get('max_depth', 3)
         lr = params.get('learning_rate', 0.1)
         
         print(f"Training LightGBM: n_estimators={n_est}, max_depth={max_d}, lr={lr}")
@@ -197,13 +199,18 @@ def train_lgbm(X_train, y_train, params: dict):
         if not (torch.cuda.is_available() and LGB_GPU_AVAILABLE):
             raise RuntimeError("LightGBM GPU not available! Cannot train.")
         
-        print("  Using LightGBM GPU")
+        print("  Device: GPU")
+        
+        # Suppress LightGBM warnings
+        import warnings
+        warnings.filterwarnings('ignore', category=UserWarning)
+        
         gpu_params = params.copy()
         gpu_params.update({
             'device': 'gpu',
             'gpu_platform_id': 0,
             'gpu_device_id': 0,
-            'verbose': 0  # Show some progress (0=warning, -1=silent, 1=info)
+            'verbose': -1  # Silent mode: suppress all warnings
         })
         base = LGBMRegressor(**gpu_params)
         
@@ -214,11 +221,11 @@ def train_lgbm(X_train, y_train, params: dict):
         model.fit(X_train, y_train)
         elapsed = time.time() - start_time
         
-        print(f"✓ LightGBM training completed in {elapsed:.1f}s ({elapsed/60:.1f}min)")
+        print(f"[OK] LightGBM training completed in {elapsed:.1f}s ({elapsed/60:.1f}min)")
         return model
         
     except Exception as e:
-        print(f"✗ LightGBM training failed: {e}")
+        print(f"[ERROR] LightGBM training failed: {e}")
         import traceback
         traceback.print_exc()
         raise RuntimeError(f"LightGBM training failed: {e}")
@@ -242,7 +249,7 @@ def train_linear(X_train, y_train, params: dict):
                     
                     # cuML works directly with NumPy arrays (no cuDF needed!)
                     model = cuLinearRegression()
-                    model.fit(X_train, y_train)  # 直接使用NumPy数组
+                    model.fit(X_train, y_train)  # Use NumPy arrays directly
                     return model
                 except Exception as e:
                     print(f"cuML GPU failed ({e}), falling back to sklearn CPU")

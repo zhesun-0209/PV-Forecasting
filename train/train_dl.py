@@ -16,7 +16,7 @@ from train.train_utils import (
     get_optimizer, get_scheduler,
     count_parameters
 )
-from eval.metrics_utils import calculate_metrics, calculate_mse
+from eval.metrics_utils import calculate_metrics, calculate_mse, calculate_daily_avg_metrics
 from utils.gpu_utils import get_gpu_memory_used
 from models.transformer import Transformer
 from models.rnn_models import LSTM, GRU
@@ -43,7 +43,13 @@ def train_dl_model(
     _, _, scaler_target = scalers
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
+    
+    # Clear GPU memory before training to avoid OOM
+    import gc
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+        gc.collect()
+    
     # DataLoaders
     def make_loader(Xh, Xf, y, hrs, bs, shuffle=False):
         tensors = [torch.tensor(Xh, dtype=torch.float32),
@@ -224,15 +230,18 @@ def train_dl_model(
     p_inv_matrix = p_inv.reshape(y_te.shape)
     y_inv_matrix = y_inv.reshape(y_te.shape)
     
-    # Calculate MSE (based on inverse-transformed values)
-    raw_mse = calculate_mse(y_inv_matrix, p_inv_matrix)
+    # Calculate metrics using daily average method (recommended for day-ahead forecasting)
+    # This calculates RMSE for each day, then averages across days
+    daily_metrics = calculate_daily_avg_metrics(y_inv_matrix, p_inv_matrix)
     
-    # Calculate all metrics (based on inverse-transformed values)
-    all_metrics = calculate_metrics(y_inv_matrix, p_inv_matrix)
+    # Extract metrics
+    raw_mse = daily_metrics['rmse'] ** 2  # Convert RMSE back to MSE for compatibility
+    raw_rmse = daily_metrics['rmse']
+    raw_mae = daily_metrics['mae']
     
-    # Extract basic metrics
-    raw_rmse = all_metrics['rmse']
-    raw_mae = all_metrics['mae']
+    # Also extract 24h-ahead predictions for saving to CSV (for visualization)
+    from eval.prediction_utils import extract_one_hour_ahead_predictions
+    final_preds_24h, final_gt_24h = extract_one_hour_ahead_predictions(p_inv_matrix, y_inv_matrix)
 
     # Decide whether to save model based on config
     save_options = config.get('save_options', {})
@@ -250,12 +259,12 @@ def train_dl_model(
     
     metrics = {
         'mse': raw_mse,
-        'rmse': raw_rmse,
-        'mae': raw_mae,
-        'nrmse': all_metrics['nrmse'],
-        'r_square': all_metrics['r_square'],
-        'r2': all_metrics['r2'],
-        'smape': all_metrics['smape'],
+        'rmse': raw_rmse,  # Daily averaged RMSE
+        'mae': raw_mae,    # Daily averaged MAE
+        'nrmse': raw_rmse / np.mean(y_inv_matrix[y_inv_matrix > 0]) if np.any(y_inv_matrix > 0) else np.nan,
+        'r_square': daily_metrics['r2'],
+        'r2': daily_metrics['r2'],
+        'smape': np.nan,  # Not calculated for daily avg
         'best_epoch': best_epoch,
         'final_lr': final_lr,
         'gpu_memory_used': gpu_memory_used,
@@ -263,9 +272,11 @@ def train_dl_model(
         'param_count': count_parameters(model),
         'train_time_sec': total_train_time,
         'inference_time_sec': total_inference_time,
-        'samples_count': len(y_te),
-        'predictions': p_inv.reshape(y_te.shape),
-        'y_true': y_inv.reshape(y_te.shape),
+        'samples_count': len(final_preds_24h),  # Number of 24h-ahead predictions for CSV
+        'predictions': final_preds_24h,  # 1D array of 24h-ahead predictions (for CSV)
+        'y_true': final_gt_24h,          # 1D array of corresponding ground truth (for CSV)
+        'predictions_all': p_inv_matrix,  # Full multi-step predictions (for potential analysis)
+        'y_true_all': y_inv_matrix,       # Full ground truth (for potential analysis)
         'dates': dates_te,
         'inverse_transformed': True
     }

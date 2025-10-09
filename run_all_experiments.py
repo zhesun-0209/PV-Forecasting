@@ -22,7 +22,7 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 os.chdir(script_dir)
 sys.path.append(script_dir)
 
-from data.data_utils import preprocess_features, create_sliding_windows
+from data.data_utils import preprocess_features, create_daily_windows
 from train.train_dl import train_dl_model
 from train.train_ml import train_ml_model
 
@@ -116,7 +116,6 @@ def create_config(data_path, model, complexity, lookback, feat_combo, use_te, is
         'save_options': {
             'save_model': False,
             'save_predictions': False,
-            'save_summary': False,
             'save_excel_results': False,
             'save_training_log': False
         }
@@ -133,7 +132,13 @@ def create_config(data_path, model, complexity, lookback, feat_combo, use_te, is
         config['no_hist_power'] = False
         feat_name = f"{feat_combo['name']}_{lookback}h"
 
-    config.update({'train_ratio': 0.8, 'val_ratio': 0.1, 'test_ratio': 0.1})
+    config.update({
+        'train_ratio': 0.8, 
+        'val_ratio': 0.1, 
+        'test_ratio': 0.1,
+        'shuffle_split': False,   # Sequential split for temporal evaluation
+        'random_seed': 42         # Fixed seed for reproducibility
+    })
 
     # Model-specific hyperparams
     if model in ['LSTM', 'GRU', 'Transformer', 'TCN']:
@@ -155,11 +160,11 @@ def create_config(data_path, model, complexity, lookback, feat_combo, use_te, is
         config['model_params'] = {}
     else:
         if complexity == 'low':
-            config['model_params'] = {'n_estimators': 50, 'max_depth': 5, 'learning_rate': 0.1,
-                                      'random_state': 42, 'verbosity': 0}
+            config['model_params'] = {'n_estimators': 10, 'max_depth': 1, 'learning_rate': 0.2,
+                                      'random_state': 42, 'verbosity': -1}  # Low complexity (underfit baseline)
         else:
-            config['model_params'] = {'n_estimators': 200, 'max_depth': 15, 'learning_rate': 0.05,
-                                      'random_state': 42, 'verbosity': 0}
+            config['model_params'] = {'n_estimators': 30, 'max_depth': 3, 'learning_rate': 0.1,
+                                      'random_state': 42, 'verbosity': -1}  # High complexity (validated optimal)
 
     te_suffix = 'TE' if use_te else 'noTE'
     config['experiment_name'] = f"{model}_{feat_name}_{te_suffix}" if model == 'Linear' else f"{model}_{complexity}_{feat_name}_{te_suffix}"
@@ -206,8 +211,8 @@ def run_all_experiments():
         results_df.to_csv(output_file, index=False, encoding='utf-8-sig')
         done_experiments = set()
 
-    print(f"✅ Already completed: {len(done_experiments)}")
-    print(f"🧩 Remaining: {len(all_configs) - len(done_experiments)}")
+    print(f"[OK] Already completed: {len(done_experiments)}")
+    print(f"[INFO] Remaining: {len(all_configs) - len(done_experiments)}")
 
     # === main loop ===
     for idx, config in enumerate(all_configs, 1):
@@ -224,12 +229,22 @@ def run_all_experiments():
             start_time = time.time()
             df_clean, hist_feats, fcst_feats, scaler_hist, scaler_fcst, scaler_target, no_hist_power = preprocess_features(df, config)
 
-            X_hist, X_fcst, y, hours, dates = create_sliding_windows(
-                df_clean, config['past_hours'], config['future_hours'], hist_feats, fcst_feats, no_hist_power
+            # Use daily windows (one prediction per day at 23:00)
+            # This aligns with day-ahead forecasting scenario
+            # Supports variable lookback (24h=1day, 72h=3days)
+            past_hours = config.get('past_hours', 24)
+            X_hist, X_fcst, y, hours, dates = create_daily_windows(
+                df_clean, config['future_hours'], hist_feats, fcst_feats, no_hist_power, past_hours
             )
 
             total_samples = len(X_hist)
             indices = np.arange(total_samples)
+            
+            # Random shuffle for robust evaluation (covers all seasons)
+            if config.get('shuffle_split', True):
+                np.random.seed(config.get('random_seed', 42))
+                np.random.shuffle(indices)
+            
             train_size = int(total_samples * config['train_ratio'])
             val_size = int(total_samples * config['val_ratio'])
             train_idx = indices[:train_size]
@@ -264,15 +279,27 @@ def run_all_experiments():
 
             training_time = time.time() - start_time
             
-            # Parse feature combination name from experiment name
-            # Format: Model_complexity_feature_lookback_TE or Linear_feature_TE
-            parts = exp_name.split('_')
-            if config['model'] == 'Linear':
-                # Linear_NWP_TE or Linear_NWP+_TE
-                feat_name_str = '_'.join(parts[1:-1])  # Everything between model and TE/noTE
+            # Parse feature combination name (scenario) from config
+            # Scenario should only be: PV, PV+HW, PV+NWP, PV+NWP+, NWP, NWP+
+            use_pv = config.get('use_pv', False)
+            use_hist_weather = config.get('use_hist_weather', False)
+            use_forecast = config.get('use_forecast', False)
+            use_ideal_nwp = config.get('use_ideal_nwp', False)
+            
+            if use_pv and use_hist_weather:
+                feat_name_str = 'PV+HW'
+            elif use_pv and use_forecast and use_ideal_nwp:
+                feat_name_str = 'PV+NWP+'
+            elif use_pv and use_forecast:
+                feat_name_str = 'PV+NWP'
+            elif use_pv:
+                feat_name_str = 'PV'
+            elif use_forecast and use_ideal_nwp:
+                feat_name_str = 'NWP+'
+            elif use_forecast:
+                feat_name_str = 'NWP'
             else:
-                # LSTM_low_PV_24h_TE or LSTM_low_PV+NWP_72h_noTE
-                feat_name_str = '_'.join(parts[2:-1])  # Everything between complexity and TE/noTE
+                feat_name_str = 'Unknown'
 
             result = {
                 'experiment_name': exp_name,
@@ -292,6 +319,9 @@ def run_all_experiments():
 
             print(f"  [OK] MAE: {metrics['mae']:.4f}, RMSE: {metrics['rmse']:.4f}")
             pd.DataFrame([result]).to_csv(output_file, mode='a', header=False, index=False, encoding='utf-8-sig')
+            
+            # Update done_experiments to prevent duplicates in same run
+            done_experiments.add(exp_name)
 
         except Exception as e:
             print(f"  [ERROR] {exp_name} failed: {str(e)}")
@@ -311,7 +341,7 @@ def run_all_experiments():
             continue
 
     print(f"\n{'='*80}")
-    print("✅ All Experiments Completed or Skipped!")
+    print("[OK] All Experiments Completed or Skipped!")
     print(f"Results saved to: {output_file}")
     print(f"{'='*80}")
 

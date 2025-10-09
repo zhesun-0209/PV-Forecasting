@@ -179,6 +179,127 @@ def preprocess_features(df: pd.DataFrame, config: dict):
 
     return df_clean, available_hist_feats, available_fcst_feats, scaler_hist, scaler_fcst, scaler_target, no_hist_power
 
+def create_daily_windows(df, future_hours, hist_feats, fcst_feats, no_hist_power=False, past_hours=24):
+    """
+    Create daily prediction samples (one sample per day)
+    
+    Each sample represents a day-ahead forecast:
+        Input: Previous N hours (historical) + Next day's NWP (forecast)
+        Output: Next day's 24 hours (target)
+    
+    Args:
+        df: Preprocessed dataframe with hourly data
+        future_hours: Should be 24 (full day prediction)
+        hist_feats: Historical feature columns
+        fcst_feats: Forecast feature columns  
+        no_hist_power: If True, only use forecast features
+        past_hours: Lookback window in hours (24 or 72, default 24)
+    
+    Returns:
+        X_hist: (n_days, past_hours, n_hist_feats)
+        X_fcst: (n_days, 24, n_fcst_feats) or None
+        y: (n_days, 24)
+        hours: (n_days,) - all 23 (prediction made at end of day)
+        dates: (n_days,) - next day's date
+    """
+    TARGET_COL = 'Capacity Factor'
+    
+    # Group by date
+    df['date'] = pd.to_datetime(df[['Year', 'Month', 'Day']])
+    unique_dates = sorted(df['date'].unique())
+    
+    X_hist_list = []
+    X_fcst_list = []
+    y_list = []
+    dates_list = []
+    
+    # Calculate how many days we need for lookback
+    past_days = past_hours // 24  # 24h=1day, 72h=3days
+    
+    # Create samples: use past N days to predict next day
+    for i in range(len(unique_dates) - 1):
+        # Need at least past_days of history before current day
+        if i < past_days:
+            continue
+        
+        # Get historical days (past_days before prediction day)
+        hist_dates = unique_dates[i - past_days + 1 : i + 1]
+        next_date = unique_dates[i + 1]
+        
+        # Collect historical data
+        hist_data_list = []
+        valid_hist = True
+        for hist_date in hist_dates:
+            hist_day = df[df['date'] == hist_date].copy()
+            if len(hist_day) != 24:
+                valid_hist = False
+                break
+            hist_day = hist_day.sort_values('Hour')
+            hist_data_list.append(hist_day)
+        
+        if not valid_hist:
+            continue
+        
+        # Get forecast day (next day)
+        next_day = df[df['date'] == next_date].copy()
+        if len(next_day) != 24:
+            continue
+        next_day = next_day.sort_values('Hour')
+        
+        # Historical features: concatenate all historical days
+        if hist_feats and not no_hist_power:
+            hist_arrays = []
+            for hist_day in hist_data_list:
+                if hist_day[hist_feats].isnull().any().any():
+                    valid_hist = False
+                    break
+                hist_arrays.append(hist_day[hist_feats].values)  # (24, n_hist)
+            
+            if not valid_hist:
+                continue
+            
+            X_hist = np.vstack(hist_arrays)  # (past_hours, n_hist)
+        else:
+            # For NWP-only: create dummy historical features
+            X_hist = np.zeros((past_hours, 1 if not hist_feats else len(hist_feats)))
+        
+        # Forecast features: Next day's 24 hours (NWP for day to predict)
+        if fcst_feats:
+            if next_day[fcst_feats].isnull().any().any():
+                continue
+            X_fcst = next_day[fcst_feats].values  # (24, n_fcst)
+        else:
+            X_fcst = None
+        
+        # Target: Next day's 24 hours
+        if next_day[TARGET_COL].isnull().any():
+            continue
+        y = next_day[TARGET_COL].values  # (24,)
+        
+        X_hist_list.append(X_hist)
+        if X_fcst is not None:
+            X_fcst_list.append(X_fcst)
+        y_list.append(y)
+        dates_list.append(str(next_date.date()))
+    
+    if len(X_hist_list) == 0:
+        raise ValueError("Unable to create any valid daily samples")
+    
+    X_hist = np.array(X_hist_list)
+    y = np.array(y_list)
+    
+    if fcst_feats and len(X_fcst_list) > 0:
+        X_fcst = np.array(X_fcst_list)
+    else:
+        X_fcst = None
+    
+    # All predictions made at 23:00 (end of day)
+    hours = np.full(len(X_hist), 23, dtype=np.int64)
+    dates = dates_list
+    
+    return X_hist, X_fcst, y, hours, dates
+
+
 def create_sliding_windows(df, past_hours, future_hours, hist_feats, fcst_feats, no_hist_power=False):
     """
     Create sliding window sequences for time series data
