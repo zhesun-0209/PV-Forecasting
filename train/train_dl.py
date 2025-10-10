@@ -75,8 +75,8 @@ def train_dl_model(
         mp = config.get('model_params', {}).copy()
     
     mp['use_forecast'] = config.get('use_forecast', False)
-    mp['past_hours'] = config['past_hours']
-    mp['future_hours'] = config['future_hours']
+    mp['past_hours'] = config.get('past_hours', 24)  # Default to 24 if not specified
+    mp['future_hours'] = config.get('future_hours', 24)  # Default to 24 if not specified
 
     hist_dim = Xh_tr.shape[2]
     fcst_dim = Xf_tr.shape[2] if Xf_tr is not None else 0
@@ -246,7 +246,7 @@ def train_dl_model(
     # Decide whether to save model based on config
     save_options = config.get('save_options', {})
     if save_options.get('save_model', False):
-        save_dir = config['save_dir']
+        save_dir = config.get('save_dir', './results')  # Default to ./results if not specified
         os.makedirs(save_dir, exist_ok=True)
         torch.save(model.state_dict(), os.path.join(save_dir, 'model.pth'))
 

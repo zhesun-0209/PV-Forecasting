@@ -125,7 +125,7 @@ def train_ml_model(
     print(f"  Prediction completed in {inference_time:.2f}s")
 
     # Inverse transform using scaler_target
-    fh = int(config['future_hours'])
+    fh = int(config.get('future_hours', 24))  # Default to 24 if not specified
     if scaler_target is not None:
         y_matrix = scaler_target.inverse_transform(y_test_flat).reshape(-1, fh)
         p_matrix = scaler_target.inverse_transform(preds_flat.reshape(-1, 1)).reshape(-1, fh)
@@ -155,7 +155,7 @@ def train_ml_model(
     # Get GPU memory usage
     gpu_memory_used = get_gpu_memory_used()
 
-    save_dir  = config['save_dir']
+    save_dir = config.get('save_dir', './results')  # Default to ./results if not specified
     
     # Decide whether to save model based on config
     save_options = config.get('save_options', {})
