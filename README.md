@@ -118,19 +118,21 @@ drive.mount('/content/drive')
 !python batch_create_configs.py
 
 # 5. Run experiments - Results save directly to Drive!
-# IMPORTANT: Must use quotes around path with spaces!
 
-# Batch 1: Plants 1-25 (saves to Drive automatically)
+# Method 1: Direct commands (recommended)
 !python run_experiments_multi_plant.py --max-plants 25 --output-dir "/content/drive/MyDrive/Solar PV electricity/results"
-
-# Batch 2: Plants 26-50 (auto-resume from Drive)
 !python run_experiments_multi_plant.py --skip 25 --max-plants 25 --output-dir "/content/drive/MyDrive/Solar PV electricity/results"
-
-# Batch 3: Plants 51-75
 !python run_experiments_multi_plant.py --skip 50 --max-plants 25 --output-dir "/content/drive/MyDrive/Solar PV electricity/results"
-
-# Batch 4: Plants 76-100
 !python run_experiments_multi_plant.py --skip 75 --max-plants 25 --output-dir "/content/drive/MyDrive/Solar PV electricity/results"
+
+# Method 2: Using Python variable (for easier modification)
+import subprocess
+DRIVE_PATH = "/content/drive/MyDrive/Solar PV electricity/results"
+
+subprocess.run(['python', 'run_experiments_multi_plant.py', '--max-plants', '25', '--output-dir', DRIVE_PATH])
+subprocess.run(['python', 'run_experiments_multi_plant.py', '--skip', '25', '--max-plants', '25', '--output-dir', DRIVE_PATH])
+subprocess.run(['python', 'run_experiments_multi_plant.py', '--skip', '50', '--max-plants', '25', '--output-dir', DRIVE_PATH])
+subprocess.run(['python', 'run_experiments_multi_plant.py', '--skip', '75', '--max-plants', '25', '--output-dir', DRIVE_PATH])
 ```
 
 ### Check Status from Drive
