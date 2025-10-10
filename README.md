@@ -1,379 +1,105 @@
-# Solar PV Power Forecasting - Multi-Plant System
+# PV-Forecasting: Multi-Plant Solar Power Prediction
 
 A comprehensive system for solar photovoltaic power forecasting using multiple deep learning and machine learning models, with support for batch processing multiple plants.
 
-**Base Repository**: https://github.com/zhesun-0209/PV-Forecasting.git  
-**Optimized Version**: v2.0 (2025-10-09)
-
-### Key Improvements Over Base Repository
-
-✅ **GPU OOM Protection**: Batch prediction and memory management to prevent GPU out-of-memory issues  
-✅ **Random Shuffle**: Test set covers all seasons for robust evaluation (vs sequential split)  
-✅ **Daily Average Metrics**: RMSE/MAE calculated per day then averaged (better for day-ahead forecasting)  
-✅ **Flexible Lookback**: Support for 24h and 72h historical windows  
-✅ **Tree Model Optimization**: High complexity models use n_estimators=100, max_depth=10  
-✅ **Silent Mode**: LightGBM verbosity=-1, XGBoost verbosity=0 to suppress warnings  
-✅ **Multi-Plant Support**: Unified configuration system for batch processing  
-✅ **Reproducibility**: Fixed random seed (42) ensures consistent results
+**Repository**: https://github.com/zhesun-0209/PV-Forecasting  
+**Version**: 2.0 (2025-10-09)
 
 ---
 
-## 🎯 Quick Start (3 Steps)
+## Key Features
 
-### Step 1: Install Dependencies
-```bash
-pip install -r requirements.txt
-```
-
-### Step 2: Generate Configurations  
-```bash
-# Automatically scan data/ and create configs for all plants
-python batch_create_configs.py
-```
-
-### Step 3: Run Experiments
-```bash
-# Option A: Single plant (284 experiments)
-python run_all_experiments.py
-
-# Option B: All plants batch processing
-python run_experiments_multi_plant.py
-```
-
-**That's it!** Each plant gets 284 experiments with standardized metrics.
+- **8 Models**: LSTM, GRU, Transformer, TCN, Random Forest, XGBoost, LightGBM, Linear Regression
+- **284 Experiments per Plant**: Comprehensive model and feature comparison
+- **Multi-Plant Support**: Batch process 100+ plants with automatic configuration
+- **Resume Support**: Automatically resume from interrupted experiments
+- **GPU Accelerated**: 6/8 models use GPU by default (85% of experiments)
+- **Sequential Split**: Time-series data split for realistic evaluation
+- **Production Ready**: Optimized parameters and error handling
 
 ---
 
-## 📋 Features
+## Quick Start
 
-### 🔬 Models Supported (8 Total)
-
-**Deep Learning Models:**
-- LSTM (Long Short-Term Memory)
-- GRU (Gated Recurrent Unit)  
-- Transformer
-- TCN (Temporal Convolutional Network)
-
-**Machine Learning Models:**
-- Random Forest (GPU-accelerated with cuML)
-- XGBoost (GPU-accelerated, using device='cuda')
-- LightGBM (GPU-accelerated)
-- Linear Regression
-
-### 📊 Evaluation Method
-
-**Daily Average Metrics** (Recommended for Day-Ahead Forecasting):
-- RMSE and MAE calculated per day, then averaged across all test days
-- More accurately reflects daily prediction performance
-- Better suited for day-ahead forecasting scenarios than flattening all hourly values
-
-**Data Split Strategy**:
-- Random shuffle with fixed seed (seed=42) for reproducibility
-- Ensures test set covers all seasons and weather conditions
-- More robust evaluation compared to sequential splitting
-
-### 📊 Feature Scenarios (6 Types)
-
-- **PV**: Historical PV power only
-- **PV+HW**: PV + Historical Weather
-- **PV+NWP**: PV + Numerical Weather Prediction
-- **PV+NWP+**: PV + Ideal NWP (actual weather as forecast)
-- **NWP**: NWP forecast only
-- **NWP+**: Ideal NWP only
-
-### 🎛️ Experiment Configuration
-
-Each plant runs **284 experiments** covering all combinations:
-
-| Category | Count | Details |
-|----------|-------|---------|
-| DL (PV-based) | 128 | 4 models × 2 complexity × 2 lookback × 2 TE × 4 scenarios |
-| DL (NWP-only) | 32 | 4 models × 2 complexity × 2 TE × 2 scenarios |
-| ML (PV-based) | 96 | 3 models × 2 complexity × 2 lookback × 2 TE × 4 scenarios |
-| ML (NWP-only) | 24 | 3 models × 2 complexity × 2 TE × 2 scenarios |
-| Linear (NWP) | 4 | 1 model × 2 TE × 2 scenarios |
-| **Total** | **284** | |
-
-**Variables:**
-- **Lookback windows**: 24h (1 day), 72h (3 days) for scenarios with historical features (PV, PV+HW)
-- **Time Encoding**: Enabled / Disabled  
-- **Model Complexity**: Low / High (DL and ML models)
-
-**Note**: NWP-only scenarios use past_hours=0 (no historical lookback), relying solely on weather forecasts.
-
----
-
-## 📁 Project Structure
-
-```
-Solar Prediction/
-├── config/
-│   ├── plant_template.yaml          # Configuration template
-│   └── plants/                      # Plant-specific configs (1 per plant)
-│       ├── Plant1140.yaml
-│       ├── Plant1141.yaml
-│       └── ...
-│
-├── data/                            # Data files (one CSV per plant)
-│   ├── Project1140.csv
-│   ├── Project1141.csv
-│   └── ...
-│
-├── models/                          # Model implementations
-│   ├── ml_models.py                # ML models (RF, XGB, LGBM, Linear)
-│   ├── rnn_models.py               # RNN models (LSTM, GRU)
-│   ├── transformer.py              # Transformer model
-│   └── tcn.py                      # TCN model
-│
-├── train/                          # Training pipelines
-│   ├── train_dl.py                # Deep learning training
-│   ├── train_ml.py                # Machine learning training
-│   └── train_utils.py             # Training utilities
-│
-├── eval/                           # Evaluation utilities
-│   ├── eval_utils.py              # Result saving
-│   ├── excel_utils.py             # Excel export
-│   ├── metrics_utils.py           # Metrics calculation
-│   └── prediction_utils.py        # 24h-ahead extraction
-│
-├── utils/                          # Utilities
-│   ├── gpu_utils.py               # GPU memory management
-│   └── __init__.py
-│
-├── run_all_experiments.py          # Main script (single plant)
-├── run_experiments_multi_plant.py  # Batch script (all plants)
-├── batch_create_configs.py         # Config generator
-├── config_manager.py               # Configuration manager
-├── requirements.txt                # Python dependencies
-└── README.md                       # This file
-```
-
----
-
-## 🚀 Installation
-
-### Requirements
-
-- Python 3.8+
-- PyTorch 2.0+
-- CUDA (optional, for GPU acceleration)
-
-### Quick Install
+### 1. Clone and Install
 
 ```bash
-# Clone repository
 git clone https://github.com/zhesun-0209/PV-Forecasting.git
 cd PV-Forecasting
-
-# Install dependencies
 pip install -r requirements.txt
-
-# For GPU acceleration (optional)
-pip install cuml-cu12 --extra-index-url=https://pypi.nvidia.com
 ```
 
-### GPU Acceleration (Automatic)
+### 2. Prepare Data
 
-| Model | GPU Support | Library | Acceleration |
-|-------|-------------|---------|--------------|
-| LSTM | ✓ Auto | PyTorch | Full GPU |
-| GRU | ✓ Auto | PyTorch | Full GPU |
-| Transformer | ✓ Auto | PyTorch | Full GPU |
-| TCN | ✓ Auto | PyTorch | Full GPU |
-| XGBoost | ✓ Auto | xgboost | GPU if CUDA available |
-| LightGBM | ✓ Auto | lightgbm | GPU if CUDA available |
-| Random Forest | Optional | cuML/sklearn | GPU with cuML |
-| Linear | Optional | cuML/sklearn | GPU with cuML |
-
-**Performance:** 6/8 models use GPU by default, covering 240/284 experiments (85%).
-
----
-
-## 📊 Applied Optimizations
-
-This version includes several improvements over the original GitHub repository:
-
-### 1. GPU OOM Protection ✅
-- **ML models**: Batch prediction (1000 samples/batch)
-- **DL models**: GPU memory clearing before training
-- **Benefit**: Handle large test sets without crashes
-
-### 2. Tree Model Parameter Optimization ✅
-- **High complexity**:
-  - `n_estimators`: 100 (was 200) - 2× faster
-  - `max_depth`: 10 (was 15) - prevent overfitting
-  - `verbosity`: -1 (silent mode)
-
-### 3. Scenario Naming Standardization ✅
-- **Enforced 6 standard types**: PV, PV+HW, PV+NWP, PV+NWP+, NWP, NWP+
-- **No hour information** in scenario names
-- **Consistent** across ML and DL models
-
-### 4. Output Format Unification ✅
-- **ASCII-only output** (Windows compatible)
-- **Unified progress messages** between ML and DL
-- **No Unicode errors** (✓ → [OK], ✗ → [ERROR])
-
-### 5. Multi-Plant Support ✅
-- **Batch config generation**: Scan `data/` directory automatically
-- **Unified config system**: Template + plant-specific overrides
-- **Batch experiments**: Run 284 experiments for each plant
-- **Scalable**: Support 130+ plants
-
-### 6. Daily Day-Ahead Prediction ✅
-- **Prediction method**: One prediction per day (at 23:00)
-- **No overlapping**: Each day predicted once, clean evaluation
-- **Sample efficiency**: ~993 daily samples vs ~24K hourly samples
-- **Training speed**: 10-16× faster than hourly sliding
-- **Accuracy**: Comparable (MAE difference <5%)
-- **Day-ahead focus**: Perfect alignment with operational forecasting
-
----
-
-## 🎓 Configuration Management
-
-### Plant Configuration
-
-Each plant has a dedicated YAML file in `config/plants/`:
-
-```yaml
-# config/plants/Plant1140.yaml
-plant_id: "1140"
-plant_name: "Project 1140"
-data_path: "data/Project1140.csv"
-
-# Data period
-start_date: "2022-01-01"
-end_date: "2024-09-28"
-
-# Data split ratios
-train_ratio: 0.8
-val_ratio: 0.1
-test_ratio: 0.1
-
-# Model parameters (can override template)
-dl_params:
-  low:
-    d_model: 16
-    num_layers: 1
-    epochs: 20
-  high:
-    d_model: 32
-    num_layers: 2
-    epochs: 50
-
-ml_params:
-  low:
-    n_estimators: 50
-    max_depth: 5
-  high:
-    n_estimators: 100
-    max_depth: 10
+Put your CSV files in the `data/` directory:
+```
+data/
+├── Project1001.csv
+├── Project1002.csv
+└── ...
 ```
 
-### Batch Config Generation
+### 3. Generate Configurations
 
 ```bash
-# Scan data/ directory and create configs for all CSV files
+# Automatically create configs for all CSV files
 python batch_create_configs.py
-
-# Force overwrite existing configs
-python batch_create_configs.py --force
-
-# Specify date range
-python batch_create_configs.py --start-date 2022-01-01 --end-date 2024-12-31
 ```
 
-Supported CSV naming patterns:
-- `Project1140.csv` → Plant ID: 1140
-- `plant_1141.csv` → Plant ID: 1141
-- `1142.csv` → Plant ID: 1142
+### 4. Run Experiments
+
+```bash
+# Single plant (284 experiments, ~2-3 hours on GPU)
+python run_all_experiments.py
+
+# Multiple plants (batch processing)
+python run_experiments_multi_plant.py
+
+# Check status of all plants
+python check_all_plants_status.py
+```
 
 ---
 
-## 🔬 Experiment Design
+## Multi-Plant Batch Experiments
 
-### Total: 284 Experiments per Plant
+### Batch Processing Commands
 
-**DL Models (160 experiments):**
-- LSTM, GRU, Transformer, TCN
-- 2 complexity levels (low/high)
-- 2 lookback windows (24h/72h) for PV scenarios
-- 2 time encoding options (enabled/disabled)
-- 4 PV-based scenarios + 2 NWP-only scenarios
+```bash
+# Run all plants (auto-resume supported)
+python run_experiments_multi_plant.py
 
-**ML Models (120 experiments):**
-- Random Forest, XGBoost, LightGBM
-- 2 complexity levels (low/high)
-- 2 lookback windows (24h/72h) for PV scenarios
-- 2 time encoding options (enabled/disabled)
-- 4 PV-based scenarios + 2 NWP-only scenarios
+# Run first 25 plants
+python run_experiments_multi_plant.py --max-plants 25
 
-**Linear Model (4 experiments):**
-- Linear Regression
-- 2 time encoding options
-- 2 NWP-only scenarios
+# Run plants 26-50 (skip first 25)
+python run_experiments_multi_plant.py --skip 25 --max-plants 25
 
----
+# Run specific plants
+python run_experiments_multi_plant.py --plants 1001 1002 1003
 
-## 📈 Evaluation Metrics
+# Check status only (no execution)
+python run_experiments_multi_plant.py --status-only
+```
 
-All models are evaluated using:
-- **MAE** (Mean Absolute Error)
-- **RMSE** (Root Mean Squared Error)
-- **R²** (Coefficient of Determination)
-- **NRMSE** (Normalized RMSE)
-- **sMAPE** (Symmetric Mean Absolute Percentage Error)
+### Resume Support
 
-### Evaluation Strategy
+The system automatically detects completed experiments:
+- Scans for existing `results_{plant_id}_*.csv` files
+- Skips plants with 284/284 experiments complete
+- Resumes incomplete plants from last checkpoint
+- Works across Colab session interruptions
 
-**Metrics Calculation**: Based on ALL multi-step predictions
-- Comprehensive assessment of model performance
-- ~210,240 prediction values (8,760 samples × 24 hours)
-
-**CSV Output**: Only 24h-ahead predictions
-- Day-ahead forecasting scenario
-- ~8,778 values for visualization and analysis
+```bash
+# If interrupted, simply re-run the same command
+python run_experiments_multi_plant.py  # Will resume automatically
+```
 
 ---
 
-## 📊 Results Format
+## Running on Google Colab
 
-### Summary Results CSV
-
-Each experiment generates a row in the results CSV:
-
-| Column | Description |
-|--------|-------------|
-| experiment_name | Unique experiment identifier |
-| model | Model type (LSTM, XGB, etc.) |
-| complexity | low/high |
-| feature_combo | Scenario (PV, PV+NWP, etc.) |
-| lookback_hours | 24 or 72 |
-| use_time_encoding | True/False |
-| mae | Mean Absolute Error |
-| rmse | Root Mean Squared Error |
-| r2 | R-squared |
-| train_time_sec | Training time |
-| test_samples | Number of test samples |
-| best_epoch | Best epoch (DL only) |
-| param_count | Model parameters |
-
-### Output Files
-
-**Single Plant:**
-- `all_experiments_results_YYYYMMDD_HHMMSS.csv` (284 rows)
-
-**Multi-Plant:**
-- `results_1140_YYYYMMDD_HHMMSS.csv` (284 rows per plant)
-- `results_1141_YYYYMMDD_HHMMSS.csv`
-- ...
-
----
-
-## 💻 Running on Google Colab
-
-### Quick Start
+### Quick Setup (100 Plants)
 
 ```python
 # 1. Clone repository
@@ -381,201 +107,334 @@ Each experiment generates a row in the results CSV:
 %cd PV-Forecasting
 
 # 2. Install dependencies
-!pip install torch torchvision torchaudio
-!pip install pyyaml pandas scikit-learn xgboost lightgbm matplotlib seaborn tqdm
+!pip install -q -r requirements.txt
 
-# 3. Optional: Install cuML for GPU Random Forest
-!pip install cuml-cu12 --extra-index-url=https://pypi.nvidia.com
+# 3. Mount Google Drive and copy datasets
+from google.colab import drive
+drive.mount('/content/drive')
+!cp /content/drive/MyDrive/your_folder/*.csv data/
 
-# 4. Restart runtime (Runtime → Restart runtime)
+# 4. Generate configs for all plants
+!python batch_create_configs.py
 
-# 5. Run experiments
-%cd PV-Forecasting
-!python run_all_experiments.py
+# 5. Check status
+!python check_all_plants_status.py
+
+# 6. Run experiments (split into batches to avoid timeout)
+# Batch 1: First 25 plants (~60 hours)
+!python run_experiments_multi_plant.py --max-plants 25
+
+# Batch 2: Next 25 plants
+!python run_experiments_multi_plant.py --skip 25 --max-plants 25
+
+# 7. Save results to Drive
+!cp -r results/ /content/drive/MyDrive/PV_Results/
+!cp *.csv /content/drive/MyDrive/PV_Results/
 ```
 
-### Download Results
+### Colab Best Practices
 
-```python
-from google.colab import files
-files.download('all_experiments_results_*.csv')
-```
+**For 100 Plants**:
+- Split into 4 batches of 25 plants each
+- Use 4 parallel Colab notebooks to speed up
+- Each batch takes ~60-75 hours
+- Total wall-clock time: ~60-75 hours (with parallelization)
 
-### Notes
-- **Execution time**: ~4-8 hours for 284 experiments
-- **GPU recommended**: Tesla T4 or better
-- **Free tier limit**: 12-hour sessions
-- **Auto-save**: Results saved after each experiment
+**Memory Management**:
+- Results auto-saved after each experiment
+- GPU cache cleared between plants
+- No manual intervention needed
 
 ---
 
-## 🔧 Advanced Usage
+## Project Structure
 
-### Adding New Plants
+```
+PV-Forecasting/
+├── data/                              # CSV data files (one per plant)
+├── config/
+│   ├── plant_template.yaml           # Configuration template
+│   └── plants/                       # Auto-generated plant configs
+├── models/                            # Model implementations
+│   ├── ml_models.py                  # ML models
+│   ├── rnn_models.py                 # LSTM, GRU
+│   ├── transformer.py                # Transformer
+│   └── tcn.py                        # TCN
+├── train/                             # Training pipelines
+├── eval/                              # Evaluation utilities
+├── utils/                             # GPU utils
+├── run_all_experiments.py            # Single plant runner
+├── run_experiments_multi_plant.py    # Multi-plant batch runner
+├── batch_create_configs.py           # Auto config generator
+├── check_all_plants_status.py        # Status checker
+└── README.md                          # This file
+```
 
-1. Add CSV file to `data/` directory:
-   ```
-   data/
-   ├── Project1140.csv
-   ├── Project1141.csv  ← New plant
-   └── Project1142.csv  ← New plant
-   ```
+---
 
-2. Generate configurations:
-   ```bash
-   python batch_create_configs.py
-   ```
+## Experiment Design
 
-3. Run multi-plant experiments:
-   ```bash
-   python run_experiments_multi_plant.py
-   ```
+### 284 Experiments per Plant
 
-### Resume Interrupted Experiments
+**Deep Learning (160 experiments)**:
+- Models: LSTM, GRU, Transformer, TCN (4)
+- Complexity: low, high (2)
+- Lookback: 24h, 72h (2)
+- Time Encoding: yes, no (2)
+- Feature Scenarios: PV, PV+HW, PV+NWP, PV+NWP+ (4)
+- NWP-only: NWP, NWP+ (2)
+- Total: 4 × 2 × (2 × 2 × 4 + 2 × 2) = 160
 
-The system automatically resumes from the last completed experiment:
+**Machine Learning (120 experiments)**:
+- Models: RF, XGBoost, LightGBM (3)
+- Same variables as DL
+- Total: 3 × 2 × (2 × 2 × 4 + 2 × 2) = 120
+
+**Linear (4 experiments)**:
+- NWP scenarios with time encoding options
+- Total: 2 × 2 = 4
+
+**Grand Total**: 284 experiments per plant
+
+---
+
+## Feature Scenarios
+
+1. **PV**: Historical power only
+2. **PV+HW**: Historical power + Historical weather
+3. **PV+NWP**: Historical power + Weather forecast
+4. **PV+NWP+**: Historical power + Ideal forecast (actual weather)
+5. **NWP**: Weather forecast only (no historical power)
+6. **NWP+**: Ideal forecast only
+
+---
+
+## Model Parameters
+
+### Deep Learning Models
+
+**Low Complexity**:
+- Epochs: 20
+- d_model: 16
+- num_layers: 1
+- batch_size: 64
+
+**High Complexity**:
+- Epochs: 50
+- d_model: 32
+- num_layers: 2
+- batch_size: 64
+
+### Machine Learning Models
+
+**Low Complexity**:
+- n_estimators: 10
+- max_depth: 1
+- learning_rate: 0.2
+
+**High Complexity**:
+- n_estimators: 30
+- max_depth: 3
+- learning_rate: 0.1
+
+---
+
+## Data Requirements
+
+### CSV Format
+
+Required columns:
+- `Year`, `Month`, `Day`, `Hour`: Timestamp information
+- Power column: Actual PV generation (auto-detected)
+- Weather columns: Temperature, irradiance, humidity, etc. (optional)
+
+### Naming Convention
+
+Supported formats (auto-detection):
+- `Project1140.csv` -> Plant ID: 1140
+- `Plant1140.csv` -> Plant ID: 1140
+- `1140.csv` -> Plant ID: 1140
+
+---
+
+## Configuration System
+
+### Template-Based Configuration
+
+All plants share a base template (`config/plant_template.yaml`) with plant-specific overrides in `config/plants/Plant{ID}.yaml`.
+
+**Auto-Generation**:
+```bash
+python batch_create_configs.py
+```
+
+This scans `data/` and creates:
+- Plant-specific configs
+- Auto-detected date ranges
+- Standardized parameters
+
+**Manual Editing**:
+```yaml
+# config/plants/Plant1140.yaml
+plant_id: "1140"
+data_path: "data/Project1140.csv"
+start_date: "2022-01-01"
+end_date: "2024-09-28"
+shuffle_split: false  # Use sequential split
+random_seed: 42
+```
+
+---
+
+## Evaluation Metrics
+
+- **MAE**: Mean Absolute Error (primary metric)
+- **RMSE**: Root Mean Squared Error
+- **R²**: Coefficient of Determination
+- **Training Time**: Seconds per experiment
+- **Model Size**: Number of parameters
+
+All metrics calculated on test set (10% of data, sequential split).
+
+---
+
+## GPU Acceleration
+
+| Model | GPU Library | Auto-Detection |
+|-------|-------------|----------------|
+| LSTM | PyTorch | Yes |
+| GRU | PyTorch | Yes |
+| Transformer | PyTorch | Yes |
+| TCN | PyTorch | Yes |
+| XGBoost | xgboost | Yes |
+| LightGBM | lightgbm | Yes |
+| Random Forest | sklearn | CPU (cuML optional) |
+| Linear | sklearn | CPU (cuML optional) |
+
+**Coverage**: 6/8 models (240/284 experiments, 85%) use GPU automatically.
+
+---
+
+## Advanced Usage
+
+### Status Monitoring
 
 ```bash
-# Run experiments
-python run_all_experiments.py
+# Check completion status of all plants
+python check_all_plants_status.py
 
-# If interrupted, run again - will skip completed experiments
-python run_all_experiments.py
+# Monitor single plant progress
+python check_progress.py
+
+# Real-time monitoring
+python monitor_progress.py
 ```
 
-Progress is tracked in the results CSV file.
+### Parallel Execution (Colab)
+
+Run multiple batches in parallel notebooks:
+
+**Notebook 1**:
+```python
+!python run_experiments_multi_plant.py --max-plants 25
+```
+
+**Notebook 2**:
+```python
+!python run_experiments_multi_plant.py --skip 25 --max-plants 25
+```
+
+**Notebook 3**:
+```python
+!python run_experiments_multi_plant.py --skip 50 --max-plants 25
+```
+
+**Notebook 4**:
+```python
+!python run_experiments_multi_plant.py --skip 75 --max-plants 25
+```
+
+Total time: ~60-75 hours wall-clock time (parallel execution)
 
 ---
 
-## 📖 Key Findings
+## Results Format
 
-Based on experiments with Plant 1140:
+### Output Files
 
-1. **LightGBM outperforms LSTM** in high complexity:
-   - LightGBM: MAE=3.32, RMSE=6.93, R²=0.896
-   - LSTM: MAE=4.35, RMSE=7.81, R²=0.867
+**Per Plant**:
+- `results_{plant_id}_{timestamp}.csv`: 284 experiments × metrics
 
-2. **Feature combination matters**:
-   - PV+NWP outperforms single features
-   - NWP sometimes beats NWP+ (smoothness advantage)
+**Columns**:
+- plant_id, experiment_name, model, complexity, scenario
+- lookback_hours, use_time_encoding
+- mae, rmse, r2
+- train_time_sec, test_samples, best_epoch, param_count
+- status (SUCCESS/FAILED)
 
-3. **Training efficiency**:
-   - LSTM trains 2.6× faster than LightGBM
-   - LightGBM provides better accuracy
-
-4. **Prediction horizon**:
-   - 24h-ahead predictions are most relevant for day-ahead forecasting
-   - Multi-step evaluation shows comprehensive model performance
-
----
-
-## 🎯 Optimizations Applied
-
-This version includes 5 key optimizations over the base GitHub repository:
-
-| Optimization | Status | Benefit |
-|--------------|--------|---------|
-| GPU OOM Protection | ✅ | Batch prediction + memory management |
-| Tree Model Params | ✅ | n=100, d=10 (faster, less overfitting) |
-| Scenario Naming | ✅ | Standardized to 6 types |
-| Output Format | ✅ | ASCII-only, Windows compatible |
-| Multi-Plant Support | ✅ | Batch process 130+ plants |
-| 24h-Ahead Extraction | ✅ | Dual evaluation strategy |
-
-**Shuffle functionality**: Preserved from original (as requested)
-
----
-
-## 📊 Technical Details
-
-### Data Split Strategy
-
-The system uses random shuffle with fixed seed for reproducibility:
+### Aggregation
 
 ```python
-# Default configuration
-train_ratio: 0.8  # 80% for training
-val_ratio: 0.1    # 10% for validation
-test_ratio: 0.1   # 10% for testing
-random_seed: 42   # Fixed seed for reproducibility
-```
+import pandas as pd
+import glob
 
-All 284 experiments use the **same data split** to ensure fair comparison.
+# Load all results
+all_results = []
+for f in glob.glob('results_*.csv'):
+    df = pd.read_csv(f)
+    all_results.append(df)
 
-### Prediction Method: Daily Day-Ahead Forecasting
-
-**Daily Prediction Approach** (Aligned with paper requirements):
-- **One prediction per day** (made at 23:00)
-- **Input**: Previous day's 24h historical data + Next day's NWP forecast
-- **Output**: Next day's full 24h generation forecast
-- **No overlapping predictions**: Clean, interpretable results
-
-**Example**:
-```
-Day 1 (23:00):
-  Input: Day 1's 24h historical PV + Day 2's 24h NWP forecast
-  Output: Day 2's 24h generation prediction (00:00-23:00)
-
-Day 2 (23:00):
-  Input: Day 2's 24h historical PV + Day 3's 24h NWP forecast
-  Output: Day 3's 24h generation prediction (00:00-23:00)
-```
-
-**Data Statistics** (Plant 1140):
-- Total period: 2022-01-01 to 2024-09-28 (1,002 days)
-- Daily samples: ~993 days (some days incomplete)
-- Training: ~794 days (80%)
-- Validation: ~99 days (10%)
-- Testing: ~100 days (10%)
-
-**Evaluation**:
-- Metrics calculated on ALL predictions (~100 days × 24 hours = 2,400 values)
-- Each day's 24h forecast evaluated independently
-- True day-ahead operational scenario
-
-### GPU Memory Management
-
-**ML Models**:
-```python
-# Batch prediction to avoid OOM
-batch_size = 1000
-for i in range(0, n_test, batch_size):
-    batch_preds = model.predict(X_test[i:i+batch_size])
-```
-
-**DL Models**:
-```python
-# Clear GPU cache before training
-if torch.cuda.is_available():
-    torch.cuda.empty_cache()
-    gc.collect()
+combined = pd.concat(all_results, ignore_index=True)
+print(f"Total experiments: {len(combined)}")
+print(f"Best configuration: {combined.nsmallest(1, 'mae')}")
 ```
 
 ---
 
-## 🔬 Research Context
+## Performance Benchmarks
 
-This project supports day-ahead (24-hour) PV forecasting for:
-- **Charging infrastructure planning**
-- **Microgrid operations**
-- **V2G (Vehicle-to-Grid) scheduling**
-- **Battery storage optimization**
+**Sequential vs Shuffle Split** (Plant 1140):
+- Sequential MAE: 4.85 (17% better)
+- Shuffle MAE: 5.86
+- Sequential R²: 0.84 (13% better)
+- Shuffle R²: 0.75
 
-Accurate forecasts enable:
-- Feasible charging schedules
-- Cost-effective operations
-- Emissions reduction
-- Grid stability
+**Best Configuration**:
+- Model: LightGBM (high complexity)
+- Features: PV+NWP
+- Lookback: 24h
+- MAE: 2.94, RMSE: 5.15, R²: 0.94
+
+**Computational Cost** (per plant):
+- Total time: ~2.5 hours (GPU)
+- DL experiments: ~90% of time
+- ML experiments: ~10% of time
 
 ---
 
-## 📝 Citation
+## Troubleshooting
+
+**Issue**: GPU OOM during prediction  
+**Solution**: Batch prediction automatically enabled (batch_size=1000)
+
+**Issue**: Colab session timeout  
+**Solution**: Resume support - re-run same command to continue
+
+**Issue**: Different data date ranges  
+**Solution**: Edit `config/plants/Plant{ID}.yaml` manually or use batch_create_configs options
+
+**Issue**: Missing dependencies  
+**Solution**: `pip install -r requirements.txt`
+
+---
+
+## Citation
 
 If you use this code, please cite:
 
 ```bibtex
 @misc{pv-forecasting-2025,
-  title={PV-Forecasting: A Multi-Model Comparison for Solar Power Prediction},
+  title={PV-Forecasting: Multi-Plant Solar Power Prediction System},
   author={Zhe Sun},
   year={2025},
   publisher={GitHub},
@@ -585,44 +444,17 @@ If you use this code, please cite:
 
 ---
 
-## 🐛 Troubleshooting
-
-### Issue: GPU OOM during ML prediction
-**Solution**: Already fixed with batch prediction (batch_size=1000)
-
-### Issue: Unicode errors on Windows
-**Solution**: Already fixed with ASCII-only output
-
-### Issue: LightGBM warnings flooding console
-**Solution**: Already fixed with `verbosity=-1`
-
-### Issue: cuML installation fails
-**Solution**: System falls back to sklearn CPU automatically
-
-### Issue: Different plants have different data ranges
-**Solution**: Use `batch_create_configs.py --start-date --end-date` to specify common range
-
----
-
-## 📧 Contact
-
-For questions or suggestions, please submit an Issue or Pull Request.
-
----
-
-## 📄 License
+## License
 
 MIT License
 
 ---
 
-## 🙏 Acknowledgments
+## Contact
 
-**Original Repository**: [zhesun-0209/PV-Forecasting](https://github.com/zhesun-0209/PV-Forecasting)
-
-**Optimizations**: Enhanced version with multi-plant support and production-ready features
+For questions or issues, please submit an Issue or Pull Request on GitHub.
 
 ---
 
 **Last Updated**: 2025-10-09  
-**Version**: 1.0 (Optimized)
+**Version**: 2.0 (Multi-Plant Optimized)

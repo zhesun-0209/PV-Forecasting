@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-批量创建配置文件
-自动扫描data目录下的所有CSV文件，为每个数据集生成对应的配置文件
+Batch create configuration files
+Auto-scan data directory for CSV files and generate corresponding config files
 """
 
 import os
@@ -14,18 +14,18 @@ import re
 
 def extract_plant_id(filename):
     """
-    从文件名中提取电站ID
-    支持格式：Project1140.csv, Plant1140.csv, 1140.csv等
+    Extract plant ID from filename
+    Supported formats: Project1140.csv, Plant1140.csv, 1140.csv, etc.
     """
     basename = os.path.basename(filename)
     
-    # 尝试多种模式
+    # Try multiple patterns
     patterns = [
         r'Project(\d+)',
         r'Plant(\d+)',
         r'plant(\d+)',
         r'project(\d+)',
-        r'^(\d+)',  # 纯数字开头
+        r'^(\d+)',  # Pure numeric prefix
     ]
     
     for pattern in patterns:
@@ -33,54 +33,54 @@ def extract_plant_id(filename):
         if match:
             return match.group(1)
     
-    # 如果都不匹配，使用文件名（去除扩展名）
+    # If no match, use filename without extension
     return basename.replace('.csv', '').replace('.CSV', '')
 
 def detect_date_range(csv_file):
     """
-    自动检测数据集的时间范围
+    Auto-detect date range of the dataset
     """
     try:
-        # 读取CSV文件（只读取前几行和最后几行来节省时间）
+        # Read CSV file (only head and tail to save time)
         df_head = pd.read_csv(csv_file, nrows=10)
         df = pd.read_csv(csv_file)
         
-        # 尝试构建日期时间
+        # Try to construct datetime
         if all(col in df.columns for col in ['Year', 'Month', 'Day', 'Hour']):
             df['Datetime'] = pd.to_datetime(df[['Year', 'Month', 'Day', 'Hour']])
             start_date = df['Datetime'].min().strftime('%Y-%m-%d')
             end_date = df['Datetime'].max().strftime('%Y-%m-%d')
             return start_date, end_date, len(df)
         else:
-            print(f"  ⚠️  警告: {csv_file} 缺少必要的时间列，使用默认日期")
+            print(f"  [WARNING] {csv_file} missing time columns, using default dates")
             return '2022-01-01', '2024-09-28', len(df)
     except Exception as e:
-        print(f"  ⚠️  读取 {csv_file} 时出错: {str(e)}")
+        print(f"  [WARNING] Error reading {csv_file}: {str(e)}")
         return '2022-01-01', '2024-09-28', 0
 
 def create_plant_config(csv_file, template_path='config/plant_template.yaml'):
     """
-    为单个数据集创建配置文件
+    Create configuration file for a single dataset
     """
-    # 读取模板
+    # Read template
     with open(template_path, 'r', encoding='utf-8') as f:
         config = yaml.safe_load(f)
     
-    # 提取电站ID
+    # Extract plant ID
     plant_id = extract_plant_id(csv_file)
     
-    # 检测日期范围
+    # Detect date range
     start_date, end_date, data_length = detect_date_range(csv_file)
     
-    # 更新配置
+    # Update config
     config['plant_id'] = str(plant_id)
     config['plant_name'] = f"Project {plant_id}"
     config['data_path'] = csv_file
     config['start_date'] = start_date
     config['end_date'] = end_date
     
-    # 保留模板中的其他默认设置
-    # shuffle_split默认为False (Sequential划分)
+    # Keep default settings from template
+    # shuffle_split defaults to False (Sequential split)
     if 'shuffle_split' not in config:
         config['shuffle_split'] = False
     if 'random_seed' not in config:
@@ -92,24 +92,24 @@ def create_plant_config(csv_file, template_path='config/plant_template.yaml'):
 
 def batch_create_configs(data_dir='data', output_dir='config/plants', template='config/plant_template.yaml'):
     """
-    批量创建配置文件
+    Batch create configuration files
     """
     print("="*80)
-    print("批量创建配置文件")
+    print("Batch Configuration File Creation")
     print("="*80)
     
-    # 确保输出目录存在
+    # Ensure output directory exists
     os.makedirs(output_dir, exist_ok=True)
     
-    # 查找所有CSV文件
+    # Find all CSV files
     csv_files = glob.glob(os.path.join(data_dir, '*.csv')) + glob.glob(os.path.join(data_dir, '*.CSV'))
     
     if not csv_files:
-        print(f"\n❌ 错误: 在 {data_dir} 目录下没有找到CSV文件")
-        print(f"请确保数据集文件已放置在 {data_dir} 目录中")
+        print(f"\n[ERROR] No CSV files found in {data_dir} directory")
+        print(f"Please place dataset files in {data_dir} directory")
         return
     
-    print(f"\n找到 {len(csv_files)} 个数据集文件")
+    print(f"\nFound {len(csv_files)} dataset files")
     print("-"*80)
     
     created_configs = []
@@ -117,59 +117,59 @@ def batch_create_configs(data_dir='data', output_dir='config/plants', template='
     
     for i, csv_file in enumerate(csv_files, 1):
         filename = os.path.basename(csv_file)
-        print(f"\n[{i}/{len(csv_files)}] 处理: {filename}")
+        print(f"\n[{i}/{len(csv_files)}] Processing: {filename}")
         
         try:
-            # 创建配置
+            # Create configuration
             plant_id, config, data_length = create_plant_config(csv_file, template)
             
-            # 保存配置文件
+            # Save configuration file
             config_file = os.path.join(output_dir, f'Plant{plant_id}.yaml')
             
-            # 检查是否已存在
+            # Check if exists
             if os.path.exists(config_file):
-                print(f"  ⚠️  配置文件已存在，跳过: {config_file}")
+                print(f"  [SKIP] Config file already exists: {config_file}")
                 skipped_configs.append(plant_id)
                 continue
             
             with open(config_file, 'w', encoding='utf-8') as f:
                 yaml.dump(config, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
             
-            print(f"  ✓ 创建配置: {config_file}")
-            print(f"    电站ID: {plant_id}")
-            print(f"    数据范围: {config['start_date']} 至 {config['end_date']}")
-            print(f"    数据量: {data_length} 条记录")
+            print(f"  [OK] Created config: {config_file}")
+            print(f"    Plant ID: {plant_id}")
+            print(f"    Date range: {config['start_date']} to {config['end_date']}")
+            print(f"    Data length: {data_length} records")
             
             created_configs.append(plant_id)
             
         except Exception as e:
-            print(f"  ❌ 错误: {str(e)}")
+            print(f"  [ERROR] {str(e)}")
             import traceback
             traceback.print_exc()
     
-    # 总结
+    # Summary
     print("\n" + "="*80)
-    print("配置文件创建完成")
+    print("Configuration File Creation Completed")
     print("="*80)
-    print(f"✓ 新创建: {len(created_configs)} 个配置文件")
-    print(f"⚠️ 已跳过: {len(skipped_configs)} 个配置文件（已存在）")
-    print(f"📁 配置目录: {output_dir}")
+    print(f"[OK] Created: {len(created_configs)} config files")
+    print(f"[SKIP] Skipped: {len(skipped_configs)} config files (already exist)")
+    print(f"Output directory: {output_dir}")
     
     if created_configs:
-        print(f"\n创建的电站ID: {', '.join(created_configs[:10])}" + 
-              (f" ... (共{len(created_configs)}个)" if len(created_configs) > 10 else ""))
+        print(f"\nCreated plant IDs: {', '.join(created_configs[:10])}" + 
+              (f" ... (total {len(created_configs)} plants)" if len(created_configs) > 10 else ""))
     
-    print("\n下一步:")
-    print("  1. 检查配置文件: ls config/plants/")
-    print("  2. 运行单个电站测试: python run_all_experiments.py")
-    print("  3. 运行所有电站: python run_experiments_multi_plant.py")
+    print("\nNext steps:")
+    print("  1. Check configs: ls config/plants/")
+    print("  2. Test single plant: python run_all_experiments.py")
+    print("  3. Run all plants: python run_experiments_multi_plant.py")
     print("="*80)
 
 def verify_configs(config_dir='config/plants'):
     """
-    验证所有配置文件
+    Verify all configuration files
     """
-    print("\n验证配置文件...")
+    print("\nVerifying configuration files...")
     config_files = glob.glob(os.path.join(config_dir, '*.yaml'))
     
     valid_count = 0
@@ -180,53 +180,53 @@ def verify_configs(config_dir='config/plants'):
             with open(config_file, 'r', encoding='utf-8') as f:
                 config = yaml.safe_load(f)
             
-            # 检查必要字段
+            # Check required fields
             required_fields = ['plant_id', 'data_path', 'start_date', 'end_date']
             missing_fields = [field for field in required_fields if field not in config]
             
             if missing_fields:
-                print(f"  ⚠️  {os.path.basename(config_file)}: 缺少字段 {missing_fields}")
+                print(f"  [WARNING] {os.path.basename(config_file)}: Missing fields {missing_fields}")
                 invalid_count += 1
             else:
-                # 检查数据文件是否存在
+                # Check if data file exists
                 if not os.path.exists(config['data_path']):
-                    print(f"  ⚠️  {os.path.basename(config_file)}: 数据文件不存在 {config['data_path']}")
+                    print(f"  [WARNING] {os.path.basename(config_file)}: Data file not found {config['data_path']}")
                     invalid_count += 1
                 else:
                     valid_count += 1
         except Exception as e:
-            print(f"  ❌ {os.path.basename(config_file)}: {str(e)}")
+            print(f"  [ERROR] {os.path.basename(config_file)}: {str(e)}")
             invalid_count += 1
     
-    print(f"\n验证结果: ✓ {valid_count} 个有效, ⚠️ {invalid_count} 个无效")
+    print(f"\nVerification result: [OK] {valid_count} valid, [WARNING] {invalid_count} invalid")
     return valid_count, invalid_count
 
 if __name__ == '__main__':
     import argparse
     
-    parser = argparse.ArgumentParser(description='批量创建配置文件')
-    parser.add_argument('--data-dir', default='data', help='数据集目录 (默认: data)')
-    parser.add_argument('--output-dir', default='config/plants', help='配置输出目录 (默认: config/plants)')
-    parser.add_argument('--template', default='config/plant_template.yaml', help='配置模板文件')
-    parser.add_argument('--verify', action='store_true', help='验证已创建的配置文件')
-    parser.add_argument('--force', action='store_true', help='强制覆盖已存在的配置文件')
+    parser = argparse.ArgumentParser(description='Batch create configuration files')
+    parser.add_argument('--data-dir', default='data', help='Dataset directory (default: data)')
+    parser.add_argument('--output-dir', default='config/plants', help='Config output directory (default: config/plants)')
+    parser.add_argument('--template', default='config/plant_template.yaml', help='Configuration template file')
+    parser.add_argument('--verify', action='store_true', help='Verify created configuration files')
+    parser.add_argument('--force', action='store_true', help='Force overwrite existing config files')
     
     args = parser.parse_args()
     
-    # 检查模板文件是否存在
+    # Check if template file exists
     if not os.path.exists(args.template):
-        print(f"❌ 错误: 模板文件不存在: {args.template}")
+        print(f"[ERROR] Template file not found: {args.template}")
         exit(1)
     
-    # 如果只是验证
+    # If only verifying
     if args.verify:
         verify_configs(args.output_dir)
         exit(0)
     
-    # 批量创建配置
+    # Batch create configs
     batch_create_configs(args.data_dir, args.output_dir, args.template)
     
-    # 验证创建的配置
+    # Verify created configs
     print("\n")
     verify_configs(args.output_dir)
 
