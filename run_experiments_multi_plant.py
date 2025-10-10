@@ -173,26 +173,33 @@ def run_single_experiment(config: Dict, df: pd.DataFrame) -> Dict:
         }
 
 
-def check_plant_completion(plant_id: str) -> tuple:
+def check_plant_completion(plant_id: str, output_dir: str = None) -> tuple:
     """
     Check if a plant's experiments are complete
     
     Args:
         plant_id: Plant ID
+        output_dir: Directory to check for results
         
     Returns:
         (is_complete, completed_count, result_file_path)
     """
+    if output_dir is None:
+        output_dir = script_dir
+    
     # Find all result files for this plant
-    existing_files = [f for f in os.listdir(script_dir)
+    if not os.path.exists(output_dir):
+        return False, 0, None
+    
+    existing_files = [f for f in os.listdir(output_dir)
                      if f.startswith(f"results_{plant_id}_") and f.endswith(".csv")]
     
     if not existing_files:
         return False, 0, None
     
     # Use the latest file
-    existing_files.sort(key=lambda x: os.path.getmtime(os.path.join(script_dir, x)), reverse=True)
-    result_file = existing_files[0]
+    existing_files.sort(key=lambda x: os.path.getmtime(os.path.join(output_dir, x)), reverse=True)
+    result_file = os.path.join(output_dir, existing_files[0])
     
     try:
         df = pd.read_csv(result_file)
@@ -212,13 +219,14 @@ def check_plant_completion(plant_id: str) -> tuple:
         return False, 0, None
 
 
-def run_plant_experiments(plant_config_path: str, resume: bool = True):
+def run_plant_experiments(plant_config_path: str, resume: bool = True, output_dir: str = None):
     """
     Run all experiments for a single plant with resume support
     
     Args:
         plant_config_path: Plant configuration file path
         resume: Whether to support resume from checkpoint
+        output_dir: Directory to save results (default: current directory)
         
     Returns:
         Number of successful experiments
@@ -232,8 +240,14 @@ def run_plant_experiments(plant_config_path: str, resume: bool = True):
     plant_config = manager.load_plant_config(plant_config_path)
     plant_id = plant_config['plant_id']
     
+    # Set output directory
+    if output_dir is None:
+        output_dir = script_dir
+    else:
+        os.makedirs(output_dir, exist_ok=True)
+    
     # Check if already complete
-    is_complete, completed_count, existing_file = check_plant_completion(plant_id)
+    is_complete, completed_count, existing_file = check_plant_completion(plant_id, output_dir)
     
     if is_complete and resume:
         print(f"[OK] Plant {plant_id} already complete: {completed_count}/284 experiments")
@@ -279,7 +293,7 @@ def run_plant_experiments(plant_config_path: str, resume: bool = True):
     else:
         # Create new file
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_file = f"results_{plant_id}_{timestamp}.csv"
+        output_file = os.path.join(output_dir, f"results_{plant_id}_{timestamp}.csv")
         results_df = pd.DataFrame(columns=[
             'plant_id', 'experiment_name', 'model', 'complexity', 'scenario',
             'lookback_hours', 'use_time_encoding', 'mae', 'rmse', 'r2',
@@ -323,10 +337,13 @@ def run_plant_experiments(plant_config_path: str, resume: bool = True):
     return success_count
 
 
-def scan_all_plants_status() -> List[Dict]:
+def scan_all_plants_status(output_dir: str = None) -> List[Dict]:
     """
     Scan all plants and their completion status
     
+    Args:
+        output_dir: Directory to check for results
+        
     Returns:
         List of plant status dictionaries
     """
@@ -337,7 +354,7 @@ def scan_all_plants_status() -> List[Dict]:
     
     for plant in plants:
         plant_id = plant['plant_id']
-        is_complete, completed, result_file = check_plant_completion(plant_id)
+        is_complete, completed, result_file = check_plant_completion(plant_id, output_dir)
         
         plant_statuses.append({
             'plant_id': plant_id,
@@ -353,7 +370,7 @@ def scan_all_plants_status() -> List[Dict]:
 
 
 def run_all_plants(resume: bool = True, skip: int = 0, max_plants: int = None, 
-                   plants: List[str] = None):
+                   plants: List[str] = None, output_dir: str = None):
     """
     Run experiments for all plants with advanced filtering
     
@@ -362,6 +379,7 @@ def run_all_plants(resume: bool = True, skip: int = 0, max_plants: int = None,
         skip: Number of plants to skip from the beginning
         max_plants: Maximum number of plants to process
         plants: List of specific plant IDs to run (overrides skip/max_plants)
+        output_dir: Directory to save results (default: current directory)
     """
     print("=" * 80)
     print("Multi-Plant Batch Experiment Runner")
@@ -392,6 +410,13 @@ def run_all_plants(resume: bool = True, skip: int = 0, max_plants: int = None,
         if max_plants:
             print(f"Running maximum: {max_plants} plants")
     
+    # Set output directory
+    if output_dir is None:
+        output_dir = script_dir
+    else:
+        os.makedirs(output_dir, exist_ok=True)
+    
+    print(f"\nOutput directory: {output_dir}")
     print(f"\n{'='*80}")
     print(f"Plants to process: {len(filtered_plants)}")
     print(f"{'='*80}")
@@ -401,7 +426,7 @@ def run_all_plants(resume: bool = True, skip: int = 0, max_plants: int = None,
         print("\n[Scanning existing results...]")
         plant_statuses = []
         for plant in filtered_plants:
-            is_complete, completed, result_file = check_plant_completion(plant['plant_id'])
+            is_complete, completed, result_file = check_plant_completion(plant['plant_id'], output_dir)
             plant_statuses.append({
                 'plant_id': plant['plant_id'],
                 'completed': completed,
@@ -436,7 +461,7 @@ def run_all_plants(resume: bool = True, skip: int = 0, max_plants: int = None,
         print(f"Progress: {i/len(filtered_plants)*100:.1f}%")
         print(f"{'#' * 80}")
         
-        success = run_plant_experiments(plant_config_path, resume=resume)
+        success = run_plant_experiments(plant_config_path, resume=resume, output_dir=output_dir)
         total_success += success
         total_experiments += 284
         plants_processed += 1
@@ -509,6 +534,9 @@ Examples:
                        help='Start fresh without resuming from previous results')
     parser.add_argument('--status-only', action='store_true',
                        help='Only show status without running experiments')
+    parser.add_argument('--output-dir', type=str, default=None,
+                       help='Directory to save results (default: current directory). '
+                            'For Colab/Drive: /content/drive/MyDrive/Solar PV electricity/results')
     
     args = parser.parse_args()
     
@@ -520,7 +548,10 @@ Examples:
         print("Plant Experiments Status Scan")
         print("=" * 80)
         
-        statuses = scan_all_plants_status()
+        if args.output_dir:
+            print(f"Checking results in: {args.output_dir}\n")
+        
+        statuses = scan_all_plants_status(args.output_dir)
         
         if not statuses:
             print("No plant configurations found")
@@ -577,8 +608,8 @@ Examples:
                 print(f"  ... and {len(plants)-20} more plants")
             sys.exit(1)
         
-        run_plant_experiments(plant_config_path, resume=resume)
+        run_plant_experiments(plant_config_path, resume=resume, output_dir=args.output_dir)
     else:
         # Run multiple plants
         run_all_plants(resume=resume, skip=args.skip, 
-                      max_plants=args.max_plants, plants=args.plants)
+                      max_plants=args.max_plants, plants=args.plants, output_dir=args.output_dir)

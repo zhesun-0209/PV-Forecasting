@@ -75,12 +75,20 @@ def check_plant_status(plant_id: str, script_dir: str = '.') -> dict:
         }
 
 
-def scan_all_plants():
+def scan_all_plants(output_dir=None):
     """
     Scan status of all plants
+    
+    Args:
+        output_dir: Directory to check for results (default: current directory)
     """
     script_dir = os.path.dirname(os.path.abspath(__file__))
     os.chdir(script_dir)
+    
+    if output_dir is None:
+        output_dir = script_dir
+    
+    print(f"Checking results in: {output_dir}")
     
     print("=" * 100)
     print("All Plants Experiment Status Scan")
@@ -115,7 +123,7 @@ def scan_all_plants():
     # Check each plant's status
     statuses = []
     for plant_id in plant_ids:
-        status = check_plant_status(plant_id, script_dir)
+        status = check_plant_status(plant_id, output_dir)
         statuses.append(status)
     
     # Classify by status
@@ -238,5 +246,14 @@ def scan_all_plants():
 
 
 if __name__ == '__main__':
-    scan_all_plants()
+    import argparse
+    
+    parser = argparse.ArgumentParser(description='Check status of all plant experiments')
+    parser.add_argument('--output-dir', type=str, default=None,
+                       help='Directory to check for results (default: current directory). '
+                            'For Colab/Drive: /content/drive/MyDrive/Solar PV electricity/results')
+    
+    args = parser.parse_args()
+    
+    scan_all_plants(output_dir=args.output_dir)
 

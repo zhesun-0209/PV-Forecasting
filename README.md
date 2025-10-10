@@ -112,90 +112,47 @@ python run_experiments_multi_plant.py  # Will resume automatically
 # 3. Mount Google Drive and copy datasets
 from google.colab import drive
 drive.mount('/content/drive')
-!cp /content/drive/MyDrive/your_folder/*.csv data/
+!cp /content/drive/MyDrive/your_datasets_folder/*.csv data/
 
 # 4. Generate configs for all plants
 !python batch_create_configs.py
 
-# 5. Check status
+# 5. Run experiments - Results save directly to Drive!
+# Batch 1: Plants 1-25 (saves to Drive automatically)
+!python run_experiments_multi_plant.py --max-plants 25 --output-dir "/content/drive/MyDrive/Solar PV electricity/results"
+
+# Batch 2: Plants 26-50 (auto-resume from Drive)
+!python run_experiments_multi_plant.py --skip 25 --max-plants 25 --output-dir "/content/drive/MyDrive/Solar PV electricity/results"
+
+# Batch 3: Plants 51-75
+!python run_experiments_multi_plant.py --skip 50 --max-plants 25 --output-dir "/content/drive/MyDrive/Solar PV electricity/results"
+
+# Batch 4: Plants 76-100
+!python run_experiments_multi_plant.py --skip 75 --max-plants 25 --output-dir "/content/drive/MyDrive/Solar PV electricity/results"
+```
+
+### Check Status from Drive
+
+```python
+# Check what's completed in your Drive folder
+!python check_all_plants_status.py --output-dir "/content/drive/MyDrive/Solar PV electricity/results"
+
+# Or check status in current directory
 !python check_all_plants_status.py
-
-# 6. Run experiments (split into batches to avoid timeout)
-# Batch 1: First 25 plants (~60 hours)
-!python run_experiments_multi_plant.py --max-plants 25
-
-# Batch 2: Next 25 plants
-!python run_experiments_multi_plant.py --skip 25 --max-plants 25
-
-# 7. Save results to Drive using the automated script
-!python save_results_to_drive.py
-
-# Or manually specify path
-!python save_results_to_drive.py --drive-path "/content/drive/MyDrive/Solar PV electricity/results"
-
-# Or save manually
-!mkdir -p "/content/drive/MyDrive/Solar PV electricity/results"
-!cp results_*.csv "/content/drive/MyDrive/Solar PV electricity/results/"
 ```
 
-### Auto-Save Results to Drive
+### Key Features
 
-**Method 1: Using automated script (Recommended)**
-
-```python
-# Save all results with timestamped folder
-!python save_results_to_drive.py
-
-# Customize Drive path
-!python save_results_to_drive.py --drive-path "/content/drive/MyDrive/Solar PV electricity/results"
-
-# Include detailed results directory (can be large)
-!python save_results_to_drive.py --include-detailed
-```
-
-**Method 2: Manual save**
-
-```python
-# Create target directory
-!mkdir -p "/content/drive/MyDrive/Solar PV electricity/results"
-
-# Copy all result CSV files
-!cp results_*.csv "/content/drive/MyDrive/Solar PV electricity/results/"
-!cp all_experiments_results_*.csv "/content/drive/MyDrive/Solar PV electricity/results/"
-
-# Optional: Copy detailed results folder
-!cp -r results/ "/content/drive/MyDrive/Solar PV electricity/results/"
-```
-
-**Method 3: Periodic auto-save during batch runs**
-
-```python
-# Save after each batch automatically
-for batch_num in range(4):
-    skip = batch_num * 25
-    
-    # Run batch
-    !python run_experiments_multi_plant.py --skip {skip} --max-plants 25
-    
-    # Auto-save after completion
-    !python save_results_to_drive.py
-    
-    print(f"[OK] Batch {batch_num + 1}/4 completed and saved!")
-```
-
-### Colab Best Practices
+**Direct Drive Save**: Results save directly to Drive, no manual copying needed
+**Auto Resume**: Automatically resume from Drive on session restart
+**No Data Loss**: Each experiment result saved immediately to Drive
 
 **For 100 Plants**:
 - Split into 4 batches of 25 plants each
-- Use 4 parallel Colab notebooks to speed up
-- Auto-save results after each batch
-- Each batch takes ~60-75 hours
-- Total wall-clock time: ~60-75 hours (with parallelization)
-
-**Memory Management**:
-- Results auto-saved to CSV after each experiment
-- GPU cache cleared between plants
-- Periodic save to Drive recommended (every 25 plants)
+- All results save directly to Drive path
+- Auto-resume works across Colab sessions
+- Each batch: ~60-75 hours
+- Total time: ~60-75 hours (with 4 parallel notebooks)
 
 ---
 

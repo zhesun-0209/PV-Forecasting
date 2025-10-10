@@ -175,7 +175,13 @@ def create_config(data_path, model, complexity, lookback, feat_combo, use_te, is
 # =============================================================================
 # MAIN LOOP WITH RESUME
 # =============================================================================
-def run_all_experiments():
+def run_all_experiments(output_dir=None):
+    """
+    Run all experiments with optional output directory
+    
+    Args:
+        output_dir: Directory to save results (default: current directory)
+    """
     print("=" * 80)
     print("PV Forecasting: Running 284 Experiments (with resume support)")
     print("=" * 80)
@@ -191,18 +197,26 @@ def run_all_experiments():
     if torch.cuda.is_available():
         print(f"GPU: {torch.cuda.get_device_name(0)}")
 
+    # Set output directory
+    if output_dir is None:
+        output_dir = script_dir
+    else:
+        os.makedirs(output_dir, exist_ok=True)
+    
+    print(f"Output directory: {output_dir}")
+
     # === check for existing result CSV ===
-    existing_files = [f for f in os.listdir(script_dir)
+    existing_files = [f for f in os.listdir(output_dir)
                       if f.startswith("all_experiments_results_") and f.endswith(".csv")]
     if existing_files:
-        existing_files.sort(key=lambda x: os.path.getmtime(os.path.join(script_dir, x)), reverse=True)
-        output_file = existing_files[0]
+        existing_files.sort(key=lambda x: os.path.getmtime(os.path.join(output_dir, x)), reverse=True)
+        output_file = os.path.join(output_dir, existing_files[0])
         print(f"Found existing result file: {output_file}")
         results_df = pd.read_csv(output_file)
         done_experiments = set(results_df["experiment_name"].tolist())
     else:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_file = f"all_experiments_results_{timestamp}.csv"
+        output_file = os.path.join(output_dir, f"all_experiments_results_{timestamp}.csv")
         results_df = pd.DataFrame(columns=[
             'experiment_name', 'model', 'complexity', 'feature_combo',
             'lookback_hours', 'use_time_encoding', 'mae', 'rmse', 'r2',
@@ -350,6 +364,15 @@ def run_all_experiments():
 # MAIN ENTRY
 # =============================================================================
 if __name__ == "__main__":
-    success = run_all_experiments()
+    import argparse
+    
+    parser = argparse.ArgumentParser(description='Run all 284 experiments for single plant')
+    parser.add_argument('--output-dir', type=str, default=None,
+                       help='Directory to save results (default: current directory). '
+                            'Use Drive path in Colab: /content/drive/MyDrive/Solar PV electricity/results')
+    
+    args = parser.parse_args()
+    
+    success = run_all_experiments(output_dir=args.output_dir)
     if not success:
         sys.exit(1)
