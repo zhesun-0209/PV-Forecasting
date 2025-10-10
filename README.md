@@ -118,32 +118,32 @@ drive.mount('/content/drive')
 !python batch_create_configs.py
 
 # 5. Run experiments - Results save directly to Drive!
-# Important: Use quotes around path with spaces!
+# IMPORTANT: Must use quotes around path with spaces!
 
 # Batch 1: Plants 1-25 (saves to Drive automatically)
-!python run_experiments_multi_plant.py --max-plants 25 --output-dir "/content/drive/MyDrive/Solar_PV_electricity/results"
+!python run_experiments_multi_plant.py --max-plants 25 --output-dir "/content/drive/MyDrive/Solar PV electricity/results"
 
 # Batch 2: Plants 26-50 (auto-resume from Drive)
-!python run_experiments_multi_plant.py --skip 25 --max-plants 25 --output-dir "/content/drive/MyDrive/Solar_PV_electricity/results"
+!python run_experiments_multi_plant.py --skip 25 --max-plants 25 --output-dir "/content/drive/MyDrive/Solar PV electricity/results"
 
 # Batch 3: Plants 51-75
-!python run_experiments_multi_plant.py --skip 50 --max-plants 25 --output-dir "/content/drive/MyDrive/Solar_PV_electricity/results"
+!python run_experiments_multi_plant.py --skip 50 --max-plants 25 --output-dir "/content/drive/MyDrive/Solar PV electricity/results"
 
 # Batch 4: Plants 76-100
-!python run_experiments_multi_plant.py --skip 75 --max-plants 25 --output-dir "/content/drive/MyDrive/Solar_PV_electricity/results"
+!python run_experiments_multi_plant.py --skip 75 --max-plants 25 --output-dir "/content/drive/MyDrive/Solar PV electricity/results"
 ```
 
 ### Check Status from Drive
 
 ```python
-# Check what's completed in your Drive folder
-!python check_all_plants_status.py --output-dir "/content/drive/MyDrive/Solar_PV_electricity/results"
+# Check what's completed in your Drive folder (use quotes for path with spaces!)
+!python check_all_plants_status.py --output-dir "/content/drive/MyDrive/Solar PV electricity/results"
 
 # Or check status in current directory
 !python check_all_plants_status.py
 ```
 
-**Note**: Use underscores `Solar_PV_electricity` instead of spaces to avoid shell parsing issues.
+**IMPORTANT**: Always use **quotes** around paths with spaces!
 
 ### Key Features
 
