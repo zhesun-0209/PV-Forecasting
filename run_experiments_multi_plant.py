@@ -187,19 +187,14 @@ def check_plant_completion(plant_id: str, output_dir: str = None) -> tuple:
     if output_dir is None:
         output_dir = script_dir
     
-    # Find all result files for this plant
+    # Check for result file for this plant
     if not os.path.exists(output_dir):
         return False, 0, None
     
-    existing_files = [f for f in os.listdir(output_dir)
-                     if f.startswith(f"results_{plant_id}_") and f.endswith(".csv")]
+    result_file = os.path.join(output_dir, f"results_{plant_id}.csv")
     
-    if not existing_files:
+    if not os.path.exists(result_file):
         return False, 0, None
-    
-    # Use the latest file
-    existing_files.sort(key=lambda x: os.path.getmtime(os.path.join(output_dir, x)), reverse=True)
-    result_file = os.path.join(output_dir, existing_files[0])
     
     try:
         df = pd.read_csv(result_file)
@@ -273,12 +268,13 @@ def run_plant_experiments(plant_config_path: str, resume: bool = True, output_di
     if torch.cuda.is_available():
         print(f"GPU: {torch.cuda.get_device_name(0)}")
     
+    # Set output file path
+    output_file = os.path.join(output_dir, f"results_{plant_id}.csv")
+    
     # Resume from existing results
     done_experiments = set()
-    output_file = None
     
     if resume and existing_file:
-        output_file = existing_file
         print(f"Resuming from: {output_file}")
         results_df = pd.read_csv(output_file)
         
@@ -292,8 +288,6 @@ def run_plant_experiments(plant_config_path: str, resume: bool = True, output_di
         print(f"Remaining: {len(all_configs) - len(done_experiments)}/284")
     else:
         # Create new file
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_file = os.path.join(output_dir, f"results_{plant_id}_{timestamp}.csv")
         results_df = pd.DataFrame(columns=[
             'plant_id', 'experiment_name', 'model', 'complexity', 'scenario',
             'lookback_hours', 'use_time_encoding', 'mae', 'rmse', 'r2',
@@ -536,7 +530,7 @@ Examples:
                        help='Only show status without running experiments')
     parser.add_argument('--output-dir', type=str, default=None,
                        help='Directory to save results (default: current directory). '
-                            'For Colab/Drive: /content/drive/MyDrive/Solar PV electricity/results')
+                            'For Colab/Drive: /content/drive/MyDrive/Solar_PV_electricity/results')
     
     args = parser.parse_args()
     

@@ -251,7 +251,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Check status of all plant experiments')
     parser.add_argument('--output-dir', type=str, default=None,
                        help='Directory to check for results (default: current directory). '
-                            'For Colab/Drive: /content/drive/MyDrive/Solar PV electricity/results')
+                            'For Colab/Drive: /content/drive/MyDrive/Solar_PV_electricity/results')
     
     args = parser.parse_args()
     

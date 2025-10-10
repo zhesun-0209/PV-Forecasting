@@ -206,17 +206,13 @@ def run_all_experiments(output_dir=None):
     print(f"Output directory: {output_dir}")
 
     # === check for existing result CSV ===
-    existing_files = [f for f in os.listdir(output_dir)
-                      if f.startswith("all_experiments_results_") and f.endswith(".csv")]
-    if existing_files:
-        existing_files.sort(key=lambda x: os.path.getmtime(os.path.join(output_dir, x)), reverse=True)
-        output_file = os.path.join(output_dir, existing_files[0])
+    output_file = os.path.join(output_dir, "all_experiments_results.csv")
+    
+    if os.path.exists(output_file):
         print(f"Found existing result file: {output_file}")
         results_df = pd.read_csv(output_file)
         done_experiments = set(results_df["experiment_name"].tolist())
     else:
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_file = os.path.join(output_dir, f"all_experiments_results_{timestamp}.csv")
         results_df = pd.DataFrame(columns=[
             'experiment_name', 'model', 'complexity', 'feature_combo',
             'lookback_hours', 'use_time_encoding', 'mae', 'rmse', 'r2',
@@ -224,6 +220,7 @@ def run_all_experiments(output_dir=None):
         ])
         results_df.to_csv(output_file, index=False, encoding='utf-8-sig')
         done_experiments = set()
+        print(f"Created new result file: {output_file}")
 
     print(f"[OK] Already completed: {len(done_experiments)}")
     print(f"[INFO] Remaining: {len(all_configs) - len(done_experiments)}")
@@ -369,7 +366,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Run all 284 experiments for single plant')
     parser.add_argument('--output-dir', type=str, default=None,
                        help='Directory to save results (default: current directory). '
-                            'Use Drive path in Colab: /content/drive/MyDrive/Solar PV electricity/results')
+                            'For Colab/Drive: /content/drive/MyDrive/Solar_PV_electricity/results')
     
     args = parser.parse_args()
     
