@@ -127,9 +127,60 @@ drive.mount('/content/drive')
 # Batch 2: Next 25 plants
 !python run_experiments_multi_plant.py --skip 25 --max-plants 25
 
-# 7. Save results to Drive
-!cp -r results/ /content/drive/MyDrive/PV_Results/
-!cp *.csv /content/drive/MyDrive/PV_Results/
+# 7. Save results to Drive using the automated script
+!python save_results_to_drive.py
+
+# Or manually specify path
+!python save_results_to_drive.py --drive-path "/content/drive/MyDrive/Solar PV electricity/results"
+
+# Or save manually
+!mkdir -p "/content/drive/MyDrive/Solar PV electricity/results"
+!cp results_*.csv "/content/drive/MyDrive/Solar PV electricity/results/"
+```
+
+### Auto-Save Results to Drive
+
+**Method 1: Using automated script (Recommended)**
+
+```python
+# Save all results with timestamped folder
+!python save_results_to_drive.py
+
+# Customize Drive path
+!python save_results_to_drive.py --drive-path "/content/drive/MyDrive/Solar PV electricity/results"
+
+# Include detailed results directory (can be large)
+!python save_results_to_drive.py --include-detailed
+```
+
+**Method 2: Manual save**
+
+```python
+# Create target directory
+!mkdir -p "/content/drive/MyDrive/Solar PV electricity/results"
+
+# Copy all result CSV files
+!cp results_*.csv "/content/drive/MyDrive/Solar PV electricity/results/"
+!cp all_experiments_results_*.csv "/content/drive/MyDrive/Solar PV electricity/results/"
+
+# Optional: Copy detailed results folder
+!cp -r results/ "/content/drive/MyDrive/Solar PV electricity/results/"
+```
+
+**Method 3: Periodic auto-save during batch runs**
+
+```python
+# Save after each batch automatically
+for batch_num in range(4):
+    skip = batch_num * 25
+    
+    # Run batch
+    !python run_experiments_multi_plant.py --skip {skip} --max-plants 25
+    
+    # Auto-save after completion
+    !python save_results_to_drive.py
+    
+    print(f"[OK] Batch {batch_num + 1}/4 completed and saved!")
 ```
 
 ### Colab Best Practices
@@ -137,13 +188,14 @@ drive.mount('/content/drive')
 **For 100 Plants**:
 - Split into 4 batches of 25 plants each
 - Use 4 parallel Colab notebooks to speed up
+- Auto-save results after each batch
 - Each batch takes ~60-75 hours
 - Total wall-clock time: ~60-75 hours (with parallelization)
 
 **Memory Management**:
-- Results auto-saved after each experiment
+- Results auto-saved to CSV after each experiment
 - GPU cache cleared between plants
-- No manual intervention needed
+- Periodic save to Drive recommended (every 25 plants)
 
 ---
 
