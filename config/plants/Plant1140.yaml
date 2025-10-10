@@ -1,4 +1,4 @@
-data_path: data\Project1140.csv
+data_path: data/Project1140.csv
 end_date: '2024-09-27'
 future_hours: 24
 has_ideal_nwp: true

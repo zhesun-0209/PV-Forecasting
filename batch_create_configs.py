@@ -75,7 +75,8 @@ def create_plant_config(csv_file, template_path='config/plant_template.yaml'):
     # Update config
     config['plant_id'] = str(plant_id)
     config['plant_name'] = f"Project {plant_id}"
-    config['data_path'] = csv_file
+    # Convert path to forward slashes for cross-platform compatibility
+    config['data_path'] = csv_file.replace('\\', '/')
     config['start_date'] = start_date
     config['end_date'] = end_date
     
