@@ -23,7 +23,8 @@ from sensitivity_analysis.common_utils import (
     DL_MODELS, ML_MODELS, ALL_MODELS_NO_LINEAR,
     compute_nrmse,
     create_base_config,
-    load_all_plant_configs
+    load_all_plant_configs,
+    run_single_experiment
 )
 from data.data_utils import load_raw_data, preprocess_features
 
@@ -106,9 +107,7 @@ def run_training_scale_analysis(data_dir: str = 'data', output_dir: str = 'sensi
                 
                 try:
                     # Train and evaluate
-            try:
-                # Run experiment using the corrected function
-                result = run_single_experiment(config, df.copy(), use_sliding_windows=False)
+                    result = run_single_experiment(config, df.copy(), use_sliding_windows=False)
                 
                 # Check if experiment succeeded
                 if result['status'] != 'SUCCESS':

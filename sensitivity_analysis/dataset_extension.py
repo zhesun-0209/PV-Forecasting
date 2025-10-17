@@ -25,7 +25,8 @@ from sensitivity_analysis.common_utils import (
     DL_MODELS, ML_MODELS, ALL_MODELS_NO_LINEAR,
     compute_nrmse,
     create_base_config,
-    load_all_plant_configs
+    load_all_plant_configs,
+    run_single_experiment
 )
 from data.data_utils import load_raw_data, preprocess_features, create_sliding_windows, split_data
 
@@ -92,8 +93,6 @@ def run_dataset_extension_analysis(data_dir: str = 'data', output_dir: str = 'se
             
             try:
                 # Run experiment using corrected function
-            try:
-                # Run experiment using the corrected function
                 result = run_single_experiment(config, df.copy(), use_sliding_windows=True)
                 
                 # Check if experiment succeeded
