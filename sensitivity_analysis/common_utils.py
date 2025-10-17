@@ -127,6 +127,8 @@ def create_base_config(plant_config: Dict, model: str, complexity: str = 'high',
             'num_heads': dl_params.get('num_heads', 2),
             'num_layers': dl_params.get('num_layers', 2),
             'dropout': dl_params.get('dropout', 0.1),
+            'tcn_channels': dl_params.get('tcn_channels', [8, 16] if complexity == 'low' else [16, 32]),
+            'kernel_size': dl_params.get('kernel_size', 3)
         }
     elif model in ML_MODELS:
         # Get ML parameters from plant config
@@ -237,8 +239,8 @@ def run_single_experiment(config: Dict, df: pd.DataFrame, use_sliding_windows: b
             'train_time': train_time,
             'test_samples': metrics.get('samples_count', 0),
             'status': 'SUCCESS',
-            'y_test_pred': metrics.get('y_pred_test_original', None),  # Predictions
-            'y_test': y_test,  # Ground truth
+            'y_test_pred': metrics.get('predictions_all', None),  # Full predictions matrix
+            'y_test': metrics.get('y_true_all', y_test),  # Full ground truth matrix
             'test_dates': test_dates,  # Dates for season/hour analysis
             'test_hours': test_hours  # Hours for hourly analysis
         }
@@ -365,7 +367,9 @@ def load_all_plant_configs(data_dir: str = 'data') -> List[Dict]:
                     'hidden_dim': 16,
                     'num_heads': 2,
                     'num_layers': 2,
-                    'dropout': 0.1
+                    'dropout': 0.1,
+                    'tcn_channels': [16, 32],
+                    'kernel_size': 3
                 }
             },
             # ML parameters - high complexity
