@@ -26,11 +26,15 @@ ALL_WEATHER_FEATURES = [
     # Precipitation - low correlation
 ]
 
-# Weather feature definitions for sensitivity analysis
-SOLAR_IRRADIANCE_FEATURES = ['global_tilted_irradiance']
-HIGH_WEATHER_FEATURES = ['global_tilted_irradiance', 'vapour_pressure_deficit', 'relative_humidity_2m']
-MEDIUM_WEATHER_FEATURES = HIGH_WEATHER_FEATURES + ['temperature_2m', 'wind_gusts_10m', 'cloud_cover_low', 'wind_speed_100m']
-LOW_WEATHER_FEATURES = ALL_WEATHER_FEATURES
+# Weather feature definitions for sensitivity analysis (11 meteorological variables)
+# Based on correlation with PV output
+SOLAR_IRRADIANCE_FEATURES = ['global_tilted_irradiance']  # SI: Solar Irradiance only (1 feature)
+HIGH_WEATHER_FEATURES = ['global_tilted_irradiance', 'vapour_pressure_deficit', 'relative_humidity_2m']  # H: High correlation (3 features)
+MEDIUM_WEATHER_FEATURES = HIGH_WEATHER_FEATURES + ['temperature_2m', 'wind_gusts_10m', 'cloud_cover_low', 'wind_speed_100m']  # H+M (7 features)
+LOW_WEATHER_FEATURES = MEDIUM_WEATHER_FEATURES + ['snow_depth', 'dew_point_2m', 'surface_pressure', 'precipitation']  # H+M+L: All 11 features
+
+# Update ALL_WEATHER_FEATURES to include all 11 meteorological variables
+ALL_WEATHER_FEATURES = LOW_WEATHER_FEATURES
 
 # Select features based on weather feature category
 def get_weather_features_by_category(weather_category):
