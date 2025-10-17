@@ -105,64 +105,20 @@ def run_weather_feature_analysis(data_dir: str = 'data', output_dir: str = 'sens
                 config['weather_category'] = tier_category
                 
                 try:
-                    # Preprocess data
-                    df_processed = preprocess_features(df.copy(), config)
+                    # Run experiment using the corrected function
+                    result = run_single_experiment(config, df.copy(), use_sliding_windows=False)
                     
-                    # Prepare features
-                    hist_feats = []
-                    if config.get('use_pv', False):
-                        hist_feats.append('Capacity_Factor_hist')
+                    # Check if experiment succeeded
+                    if result['status'] != 'SUCCESS':
+                        print(f"  Error running {model} - {tier_name}: {result.get('error', 'Unknown error')}")
+                        continue
                     
-                    # Weather features
-                    if config.get('use_time_encoding', False):
-                        hist_feats += ['month_cos', 'month_sin', 'hour_cos', 'hour_sin']
+                    # Get predictions and test data
+                    y_pred = result.get('y_test_pred')
+                    y_test = result.get('y_test')
                     
-                    fcst_feats = []
-                    if config.get('use_forecast', False):
-                        from data.data_utils import get_weather_features_by_category
-                        base_weather = get_weather_features_by_category(tier_category)
-                        fcst_feats = [f + '_pred' for f in base_weather]
-                        if config.get('use_time_encoding', False):
-                            fcst_feats += ['month_cos', 'month_sin', 'hour_cos', 'hour_sin']
-                    
-                    # Create windows
-                    no_hist = config.get('no_hist_power', False)
-                    X_hist, X_fcst, y, hours, dates = create_daily_windows(
-                        df_processed, 
-                        config['future_hours'],
-                        hist_feats,
-                        fcst_feats,
-                        no_hist_power=no_hist,
-                        past_hours=config.get('past_hours', 24)
-                    )
-                    
-                    # Split data
-                    (X_train_hist, X_val_hist, X_test_hist,
-                     X_train_fcst, X_val_fcst, X_test_fcst,
-                     y_train, y_val, y_test,
-                     hours_train, hours_val, hours_test,
-                     dates_train, dates_val, dates_test) = split_data(
-                        X_hist, X_fcst, y, hours, dates,
-                        train_ratio=config['train_ratio'],
-                        val_ratio=config['val_ratio'],
-                        shuffle=config.get('shuffle_split', True),
-                        random_state=config['random_seed']
-                    )
-                    
-                    # Train model
-                    from train.train_dl import train_dl_model
-                    from train.train_ml import train_ml_model
-                    
-                    if model in DL_MODELS:
-                        result = train_dl_model(config, df_processed)
-                        y_pred = result.get('y_test_pred', None)
-                    else:
-                        result = train_ml_model(config, df_processed)
-                        y_pred = result.get('y_test_pred', None)
-                    
-                    # If predictions not returned, skip
-                    if y_pred is None:
-                        print(f"  Warning: No predictions returned for {model} - {tier_name}")
+                    if y_pred is None or y_test is None:
+                        print(f"  Warning: Missing data for {model} - {tier_name}")
                         continue
                     
                     # Compute metrics on test set

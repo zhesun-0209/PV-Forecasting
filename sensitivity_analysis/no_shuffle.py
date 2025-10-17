@@ -92,72 +92,23 @@ def run_no_shuffle_analysis(data_dir: str = 'data', output_dir: str = 'sensitivi
             
             try:
                 # Train and evaluate
-                from train.train_dl import train_dl_model
-                from train.train_ml import train_ml_model
+            try:
+                # Run experiment using the corrected function
+                result = run_single_experiment(config, df.copy(), use_sliding_windows=False)
                 
-                # Preprocess data
-                df_processed = preprocess_features(df.copy(), config)
+                # Check if experiment succeeded
+                if result['status'] != 'SUCCESS':
+                    print(f"  Error running {model}: {result.get('error', 'Unknown error')}")
+                    continue
                 
-                if model in DL_MODELS:
-                    result = train_dl_model(config, df_processed)
-                else:
-                    result = train_ml_model(config, df_processed)
-                
-                # Compute NRMSE
-                y_test_pred = result.get('y_test_pred', None)
-                if y_test_pred is not None:
-                    # Get test data
-                    from data.data_utils import create_daily_windows, split_data
-                    
-                    hist_feats = []
-                    if config.get('use_pv', False):
-                        hist_feats.append('Capacity_Factor_hist')
-                    if config.get('use_time_encoding', False):
-                        hist_feats += ['month_cos', 'month_sin', 'hour_cos', 'hour_sin']
-                    
-                    fcst_feats = []
-                    if config.get('use_forecast', False):
-                        from data.data_utils import get_weather_features_by_category
-                        base_weather = get_weather_features_by_category(config['weather_category'])
-                        fcst_feats = [f + '_pred' for f in base_weather]
-                        if config.get('use_time_encoding', False):
-                            fcst_feats += ['month_cos', 'month_sin', 'hour_cos', 'hour_sin']
-                    
-                    X_hist, X_fcst, y, hours, dates = create_daily_windows(
-                        df_processed, 
-                        config['future_hours'],
-                        hist_feats,
-                        fcst_feats,
-                        no_hist_power=config.get('no_hist_power', False),
-                        past_hours=config.get('past_hours', 24)
-                    )
-                    
-                    _, _, _, _, _, _, _, _, y_test, _, _, _ = split_data(
-                        X_hist, X_fcst, y, hours, dates,
-                        train_ratio=config['train_ratio'],
-                        val_ratio=config['val_ratio'],
-                        shuffle=False,  # Sequential split
-                        random_state=config['random_seed']
-                    )
-                    
-                    y_true_flat = y_test.flatten()
-                    y_pred_flat = y_test_pred.flatten()
-                    nrmse = compute_nrmse(y_true_flat, y_pred_flat)
-                else:
-                    nrmse = np.nan
-                
-                # Store result
-                all_results.append({
-                    'plant_id': plant_id,
-                    'model': model,
-                    'mae': result['test_mae'],
-                    'rmse': result['test_rmse'],
-                    'r2': result['test_r2'],
-                    'nrmse': nrmse,
-                    'train_time': result.get('train_time', 0),
-                    'samples': result.get('test_samples', 0)
-                })
-                
+                # Extract metrics
+                mae = result['mae']
+                rmse = result['rmse']
+                r2 = result['r2']
+                nrmse = result.get('nrmse', compute_nrmse(result['y_test'].flatten(), result['y_test_pred'].flatten()))
+                train_time = result['train_time']
+                test_samples = result['test_samples']
+
             except Exception as e:
                 print(f"  Error running {model}: {e}")
                 continue
