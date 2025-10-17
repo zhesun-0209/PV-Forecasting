@@ -126,8 +126,7 @@ def run_experiment(exp_num, exp_name, exp_module, data_dir, output_dir):
         result = subprocess.run(
             ['python', script_path, '--data-dir', data_dir, '--output-dir', output_dir],
             capture_output=False,  # Show real-time output
-            text=True,
-            timeout=7200  # 2 hour timeout per experiment
+            text=True
         )
         
         end_time = datetime.now()
@@ -140,9 +139,6 @@ def run_experiment(exp_num, exp_name, exp_module, data_dir, output_dir):
             print(f"\n[ERROR] Experiment {exp_num} failed with return code: {result.returncode}")
             return False
             
-    except subprocess.TimeoutExpired:
-        print(f"\n[ERROR] Experiment {exp_num} timeout (exceeded 2 hours)")
-        return False
     except Exception as e:
         print(f"\n[ERROR] Experiment {exp_num} failed: {str(e)}")
         return False
