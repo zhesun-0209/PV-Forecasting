@@ -15,9 +15,10 @@ from typing import List, Dict, Tuple
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config_manager import PlantConfigManager
-from data.data_utils import load_raw_data, preprocess_features, create_daily_windows, split_data
+from data.data_utils import load_raw_data, preprocess_features, create_daily_windows, create_sliding_windows, split_data
 from train.train_dl import train_dl_model
 from train.train_ml import train_ml_model
+import numpy as np
 
 
 # Model definitions
@@ -137,48 +138,115 @@ def create_base_config(plant_config: Dict, model: str, complexity: str = 'high',
     return config
 
 
-def run_single_experiment(config: Dict, df: pd.DataFrame) -> Dict:
+def run_single_experiment(config: Dict, df: pd.DataFrame, use_sliding_windows: bool = False) -> Dict:
     """
-    Run a single experiment
+    Run a single experiment with complete data preparation and training
     
     Args:
         config: Experiment configuration
         df: Raw dataframe with Datetime column
+        use_sliding_windows: If True, use hourly sliding windows; if False, use daily windows
         
     Returns:
-        Result dictionary with metrics
+        Result dictionary with metrics and predictions
     """
     import time
     
     try:
         start_time = time.time()
         
-        # Preprocess features
-        df_processed = preprocess_features(df, config)
+        # Step 1: Preprocess features (returns processed df and scalers)
+        df_clean, hist_feats, fcst_feats, scaler_hist, scaler_fcst, scaler_target, no_hist_power = preprocess_features(df, config)
         
-        # Train and evaluate
+        # Step 2: Create windows
+        if use_sliding_windows:
+            # Hourly sliding windows
+            X_hist, X_fcst, y, hours, dates = create_sliding_windows(
+                df_clean,
+                past_hours=config.get('past_hours', 24),
+                future_hours=config.get('future_hours', 24),
+                hist_feats=hist_feats,
+                fcst_feats=fcst_feats,
+                no_hist_power=no_hist_power
+            )
+        else:
+            # Daily windows (default)
+            X_hist, X_fcst, y, hours, dates = create_daily_windows(
+                df_clean,
+                future_hours=config.get('future_hours', 24),
+                hist_feats=hist_feats,
+                fcst_feats=fcst_feats,
+                no_hist_power=no_hist_power,
+                past_hours=config.get('past_hours', 24)
+            )
+        
+        # Step 3: Split data
+        total_samples = len(X_hist)
+        indices = np.arange(total_samples)
+        
+        if config.get('shuffle_split', True):
+            np.random.seed(config.get('random_seed', 42))
+            np.random.shuffle(indices)
+        
+        train_size = int(total_samples * config['train_ratio'])
+        val_size = int(total_samples * config['val_ratio'])
+        train_idx = indices[:train_size]
+        val_idx = indices[train_size:train_size + val_size]
+        test_idx = indices[train_size + val_size:]
+        
+        # Split features
+        X_hist_train, y_train = X_hist[train_idx], y[train_idx]
+        X_hist_val, y_val = X_hist[val_idx], y[val_idx]
+        X_hist_test, y_test = X_hist[test_idx], y[test_idx]
+        
+        if X_fcst is not None:
+            X_fcst_train = X_fcst[train_idx]
+            X_fcst_val = X_fcst[val_idx]
+            X_fcst_test = X_fcst[test_idx]
+        else:
+            X_fcst_train = X_fcst_val = X_fcst_test = None
+        
+        # Split hours and dates
+        train_hours = np.array([hours[i] for i in train_idx])
+        val_hours = np.array([hours[i] for i in val_idx])
+        test_hours = np.array([hours[i] for i in test_idx])
+        test_dates = [dates[i] for i in test_idx]
+        
+        # Step 4: Prepare data tuples
+        train_data = (X_hist_train, X_fcst_train, y_train, train_hours, [])
+        val_data = (X_hist_val, X_fcst_val, y_val, val_hours, [])
+        test_data = (X_hist_test, X_fcst_test, y_test, test_hours, test_dates)
+        scalers = (scaler_hist, scaler_fcst, scaler_target)
+        
+        # Step 5: Train model
         model_name = config['model']
         if model_name in DL_MODELS:
-            result = train_dl_model(config, df_processed)
+            model, metrics = train_dl_model(config, train_data, val_data, test_data, scalers)
         else:  # ML models and Linear
-            result = train_ml_model(config, df_processed)
+            model, metrics = train_ml_model(config, train_data, val_data, test_data, scalers)
         
         train_time = time.time() - start_time
         
-        # Return result
+        # Return result with predictions
         return {
             'model': model_name,
             'complexity': config.get('model_complexity', 'N/A'),
-            'mae': result['test_mae'],
-            'rmse': result['test_rmse'],
-            'r2': result['test_r2'],
+            'mae': metrics.get('mae', 0.0),
+            'rmse': metrics.get('rmse', 0.0),
+            'r2': metrics.get('r2', 0.0),
             'train_time': train_time,
-            'test_samples': result.get('test_samples', 0),
-            'status': 'SUCCESS'
+            'test_samples': metrics.get('samples_count', 0),
+            'status': 'SUCCESS',
+            'y_test_pred': metrics.get('y_pred_test_original', None),  # Predictions
+            'y_test': y_test,  # Ground truth
+            'test_dates': test_dates,  # Dates for season/hour analysis
+            'test_hours': test_hours  # Hours for hourly analysis
         }
         
     except Exception as e:
+        import traceback
         print(f"Error in experiment: {str(e)}")
+        traceback.print_exc()
         return {
             'model': config.get('model', 'Unknown'),
             'complexity': config.get('model_complexity', 'N/A'),

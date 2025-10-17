@@ -81,9 +81,8 @@ except ImportError:
 print("\n5. Testing single model training (this may take a few minutes)...")
 if len(plant_configs) > 0:
     try:
-        from sensitivity_analysis.common_utils import create_base_config
-        from data.data_utils import load_raw_data, preprocess_features
-        from train.train_ml import train_ml_model
+        from sensitivity_analysis.common_utils import create_base_config, run_single_experiment
+        from data.data_utils import load_raw_data
         
         # Use first plant
         plant_config = plant_configs[0]
@@ -97,24 +96,25 @@ if len(plant_configs) > 0:
         config['no_hist_power'] = True
         config['past_hours'] = 0
         
-        # Load and preprocess data
+        # Load data
         df = load_raw_data(plant_config['data_path'])
         print(f"   [OK] Loaded {len(df)} rows")
         
-        df_processed = preprocess_features(df, config)
-        print(f"   [OK] Preprocessed {len(df_processed)} rows")
-        
-        # Train model
-        print("   Training Linear model (this should take 10-30 seconds)...")
+        # Train model using the corrected function
+        print("   Training Linear model (this should take 20-40 seconds)...")
         import time
         start_time = time.time()
-        result = train_ml_model(config, df_processed)
+        result = run_single_experiment(config, df)
         train_time = time.time() - start_time
         
-        print(f"   [OK] Training completed in {train_time:.1f} seconds")
-        print(f"   Test MAE: {result['test_mae']:.4f}")
-        print(f"   Test RMSE: {result['test_rmse']:.4f}")
-        print(f"   Test R2: {result['test_r2']:.4f}")
+        if result['status'] == 'SUCCESS':
+            print(f"   [OK] Training completed in {train_time:.1f} seconds")
+            print(f"   Test MAE: {result['mae']:.4f}")
+            print(f"   Test RMSE: {result['rmse']:.4f}")
+            print(f"   Test R2: {result['r2']:.4f}")
+            print(f"   Test samples: {result['test_samples']}")
+        else:
+            print(f"   [ERROR] Training failed: {result.get('error', 'Unknown error')}")
         
     except Exception as e:
         print(f"   [ERROR] Training failed: {e}")
