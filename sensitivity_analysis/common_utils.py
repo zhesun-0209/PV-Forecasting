@@ -222,12 +222,12 @@ def run_single_experiment(config: Dict, df: pd.DataFrame, use_sliding_windows: b
         
         # Step 5: Train model
         model_name = config['model']
+        train_start_time = time.time()
         if model_name in DL_MODELS:
             model, metrics = train_dl_model(config, train_data, val_data, test_data, scalers)
         else:  # ML models and Linear
             model, metrics = train_ml_model(config, train_data, val_data, test_data, scalers)
-        
-        train_time = time.time() - start_time
+        train_time = time.time() - train_start_time
         
         # Return result with predictions
         return {
