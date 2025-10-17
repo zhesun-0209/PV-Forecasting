@@ -114,25 +114,30 @@ def run_experiment(exp_num, exp_name, exp_module, data_dir, output_dir):
         print(f"[ERROR] Script not found: {script_path}")
         return False
     
+    # Show command being run
+    print(f"Running command: python {script_path} --data-dir {data_dir} --output-dir {output_dir}")
+    print(f"Start time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print()
+    
     start_time = datetime.now()
     
     try:
-        # Run experiment using subprocess
+        # Run experiment using subprocess with real-time output
         result = subprocess.run(
             ['python', script_path, '--data-dir', data_dir, '--output-dir', output_dir],
-            capture_output=True,
+            capture_output=False,  # Show real-time output
             text=True,
             timeout=7200  # 2 hour timeout per experiment
         )
         
+        end_time = datetime.now()
+        duration = (end_time - start_time).total_seconds() / 60
+        
         if result.returncode == 0:
-            end_time = datetime.now()
-            duration = (end_time - start_time).total_seconds() / 60
             print(f"\n[OK] Experiment {exp_num} completed successfully in {duration:.1f} minutes")
             return True
         else:
-            print(f"\n[ERROR] Experiment {exp_num} failed:")
-            print(result.stderr)
+            print(f"\n[ERROR] Experiment {exp_num} failed with return code: {result.returncode}")
             return False
             
     except subprocess.TimeoutExpired:
