@@ -402,3 +402,76 @@ def save_results(results_df: pd.DataFrame, output_file: str):
     results_df.to_csv(output_file, index=True, encoding='utf-8-sig')
     print(f"\nResults saved to: {output_file}")
 
+
+def run_experiments_for_plants(plant_configs: List[Dict], models: List[str], 
+                               config_modifier=None, use_sliding_windows=False) -> List[Dict]:
+    """
+    Run experiments for multiple plants and models
+    
+    Args:
+        plant_configs: List of plant configurations
+        models: List of model names to test
+        config_modifier: Optional function to modify config before running (takes config dict, returns config dict)
+        use_sliding_windows: Whether to use hourly sliding windows
+        
+    Returns:
+        List of result dictionaries
+    """
+    from tqdm import tqdm
+    
+    all_results = []
+    
+    for plant_idx, plant_config in enumerate(plant_configs, 1):
+        plant_id = plant_config['plant_id']
+        data_path = plant_config['data_path']
+        
+        print(f"\n{'=' * 80}")
+        print(f"Plant {plant_idx}/{len(plant_configs)}: {plant_id}")
+        print(f"{'=' * 80}")
+        
+        # Load data
+        try:
+            df = load_raw_data(data_path)
+            df['Datetime'] = pd.to_datetime(df[['Year', 'Month', 'Day', 'Hour']])
+        except Exception as e:
+            print(f"Error loading data: {e}")
+            continue
+        
+        # Run experiments for each model
+        for model in tqdm(models, desc=f"Plant {plant_id}"):
+            # Create base configuration
+            if model == 'Linear':
+                config = create_base_config(plant_config, model, complexity='high', 
+                                          lookback=24, use_te=False)
+                config['use_pv'] = False
+                config['use_hist_weather'] = False
+                config['no_hist_power'] = True
+                config['past_hours'] = 0
+            else:
+                config = create_base_config(plant_config, model, complexity='high', 
+                                          lookback=24, use_te=False)
+            
+            # Apply custom modifications if provided
+            if config_modifier:
+                config = config_modifier(config, model, plant_config)
+            
+            try:
+                # Run experiment
+                result = run_single_experiment(config, df.copy(), use_sliding_windows=use_sliding_windows)
+                
+                if result['status'] != 'SUCCESS':
+                    print(f"  Error running {model}: {result.get('error', 'Unknown')}")
+                    continue
+                
+                # Add plant ID to result
+                result['plant_id'] = plant_id
+                all_results.append(result)
+                
+            except Exception as e:
+                print(f"  Error running {model}: {e}")
+                import traceback
+                traceback.print_exc()
+                continue
+    
+    return all_results
+

@@ -88,77 +88,28 @@ def run_seasonal_analysis(data_dir: str = 'data', output_dir: str = 'sensitivity
                                           lookback=24, use_te=False)
             
             try:
-                # Preprocess data
-                df_processed = preprocess_features(df.copy(), config)
+                # Run experiment using the corrected function
+                result = run_single_experiment(config, df.copy(), use_sliding_windows=False)
                 
-                # Split data
-                from data.data_utils import create_daily_windows, split_data
+                # Check if experiment succeeded
+                if result['status'] != 'SUCCESS':
+                    print(f"  Error running {model}: {result.get('error', 'Unknown error')}")
+                    continue
                 
-                # Prepare features
-                hist_feats = []
-                if config.get('use_pv', False):
-                    hist_feats.append('Capacity_Factor_hist')
+                # Get predictions and test data
+                y_pred = result.get('y_test_pred')
+                y_test = result.get('y_test')
+                test_dates = result.get('test_dates')
                 
-                # Weather features
-                if config.get('use_time_encoding', False):
-                    hist_feats += ['month_cos', 'month_sin', 'hour_cos', 'hour_sin']
-                
-                fcst_feats = []
-                if config.get('use_forecast', False):
-                    from data.data_utils import get_weather_features_by_category
-                    base_weather = get_weather_features_by_category(config['weather_category'])
-                    fcst_feats = [f + '_pred' for f in base_weather]
-                    if config.get('use_time_encoding', False):
-                        fcst_feats += ['month_cos', 'month_sin', 'hour_cos', 'hour_sin']
-                
-                # Create windows
-                no_hist = config.get('no_hist_power', False)
-                X_hist, X_fcst, y, hours, dates = create_daily_windows(
-                    df_processed, 
-                    config['future_hours'],
-                    hist_feats,
-                    fcst_feats,
-                    no_hist_power=no_hist,
-                    past_hours=config.get('past_hours', 24)
-                )
-                
-                # Split data
-                X_train_hist, X_val_hist, X_test_hist = None, None, None
-                X_train_fcst, X_val_fcst, X_test_fcst = None, None, None
-                
-                (X_train_hist, X_val_hist, X_test_hist,
-                 X_train_fcst, X_val_fcst, X_test_fcst,
-                 y_train, y_val, y_test,
-                 hours_train, hours_val, hours_test,
-                 dates_train, dates_val, dates_test) = split_data(
-                    X_hist, X_fcst, y, hours, dates,
-                    train_ratio=config['train_ratio'],
-                    val_ratio=config['val_ratio'],
-                    shuffle=config.get('shuffle_split', True),
-                    random_state=config['random_seed']
-                )
-                
-                # Train model
-                from train.train_dl import train_dl_model
-                from train.train_ml import train_ml_model
-                
-                if model in DL_MODELS:
-                    result = train_dl_model(config, df_processed)
-                    y_pred = result.get('y_test_pred', None)
-                else:
-                    result = train_ml_model(config, df_processed)
-                    y_pred = result.get('y_test_pred', None)
-                
-                # If predictions not returned, skip
-                if y_pred is None:
-                    print(f"  Warning: No predictions returned for {model}")
+                if y_pred is None or y_test is None or test_dates is None:
+                    print(f"  Warning: Missing data for {model}")
                     continue
                 
                 # Group test results by season
                 test_df = pd.DataFrame({
                     'y_true': y_test.flatten(),
                     'y_pred': y_pred.flatten(),
-                    'date': [d for d in dates_test for _ in range(24)]  # Repeat each date 24 times
+                    'date': [d for d in test_dates for _ in range(24)]  # Repeat each date 24 times
                 })
                 test_df['month'] = pd.to_datetime(test_df['date']).dt.month
                 test_df['season'] = test_df['month'].apply(get_season)
