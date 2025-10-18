@@ -108,6 +108,20 @@ def run_dataset_extension_analysis(data_dir: str = 'data', output_dir: str = 'se
                 nrmse = result.get('nrmse', compute_nrmse(result['y_test'].flatten(), result['y_test_pred'].flatten()))
                 train_time = result['train_time']
                 test_samples = result['test_samples']
+                
+                # Store result
+                all_results.append({
+                    'plant_id': plant_id,
+                    'model': model,
+                    'window_type': 'hourly_sliding',
+                    'mae': mae,
+                    'rmse': rmse,
+                    'r2': r2,
+                    'nrmse': nrmse,
+                    'train_time': train_time,
+                    'test_samples': test_samples,
+                    'total_windows': len(result.get('y_test', []))
+                })
 
             except Exception as e:
                 print(f"  Error running {model}: {e}")
