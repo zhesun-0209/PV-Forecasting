@@ -24,13 +24,13 @@ from sensitivity_analysis.common_utils import (
     compute_nrmse,
     create_base_config,
     load_all_plant_configs,
-    run_single_experiment
-),
+    run_single_experiment,
     save_results
+)
 from data.data_utils import load_raw_data, preprocess_features
 
 
-def run_no_shuffle_analysis(data_dir: str = 'data', output_dir: str = 'sensitivity_analysis/results'), local_output_dir: str = None:
+def run_no_shuffle_analysis(data_dir: str = 'data', output_dir: str = 'sensitivity_analysis/results', local_output_dir: str = None):
     """
     Run no-shuffle analysis across all plants
     
