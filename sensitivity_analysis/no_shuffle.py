@@ -185,10 +185,10 @@ if __name__ == '__main__':
                        help='Directory containing plant CSV files')
     parser.add_argument('--output-dir', type=str, default='sensitivity_analysis/results',
                        help='Directory to save results')
-    parser.add_argument(\'--local-output\', type=str, default=None,
-                       help=\'Local backup directory for results\')
+    parser.add_argument('--local-output', type=str, default=None,
+                       help='Local backup directory for results')
     
     args = parser.parse_args()
     
-    run_no_shuffle_analysis(data_dir=args.data_dir, output_dir=args.output_dir), local_output_dir=args.local_output
+    run_no_shuffle_analysis(data_dir=args.data_dir, output_dir=args.output_dir, local_output_dir=args.local_output)
 

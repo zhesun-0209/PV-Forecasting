@@ -39,7 +39,7 @@ TRAINING_SCALES = {
 }
 
 
-def run_training_scale_analysis(data_dir: str = 'data', output_dir: str = 'sensitivity_analysis/results'), local_output_dir: str = None:
+def run_training_scale_analysis(data_dir: str = 'data', output_dir: str = 'sensitivity_analysis/results', local_output_dir: str = None):
     """
     Run training scale analysis across all plants
     
@@ -109,21 +109,21 @@ def run_training_scale_analysis(data_dir: str = 'data', output_dir: str = 'sensi
                 try:
                     # Train and evaluate
                     result = run_single_experiment(config, df.copy(), use_sliding_windows=False)
-                
-                # Check if experiment succeeded
-                if result['status'] != 'SUCCESS':
-                    print(f"  Error running {model}: {result.get('error', 'Unknown error')}")
-                    continue
-                
-                # Extract metrics
-                mae = result['mae']
-                rmse = result['rmse']
-                r2 = result['r2']
-                nrmse = result.get('nrmse', compute_nrmse(result['y_test'].flatten(), result['y_test_pred'].flatten()))
-                train_time = result['train_time']
-                test_samples = result['test_samples']
+                    
+                    # Check if experiment succeeded
+                    if result['status'] != 'SUCCESS':
+                        print(f"  Error running {model}: {result.get('error', 'Unknown error')}")
+                        continue
+                    
+                    # Extract metrics
+                    mae = result['mae']
+                    rmse = result['rmse']
+                    r2 = result['r2']
+                    nrmse = result.get('nrmse', compute_nrmse(result['y_test'].flatten(), result['y_test_pred'].flatten()))
+                    train_time = result['train_time']
+                    test_samples = result['test_samples']
 
-            except Exception as e:
+                except Exception as e:
                     print(f"  Error running {model} - {scale_name}: {e}")
                     continue
     
@@ -217,10 +217,10 @@ if __name__ == '__main__':
                        help='Directory containing plant CSV files')
     parser.add_argument('--output-dir', type=str, default='sensitivity_analysis/results',
                        help='Directory to save results')
-    parser.add_argument(\'--local-output\', type=str, default=None,
-                       help=\'Local backup directory for results\')
+    parser.add_argument('--local-output', type=str, default=None,
+                       help='Local backup directory for results')
     
     args = parser.parse_args()
     
-    run_training_scale_analysis(data_dir=args.data_dir, output_dir=args.output_dir), local_output_dir=args.local_output
+    run_training_scale_analysis(data_dir=args.data_dir, output_dir=args.output_dir, local_output_dir=args.local_output)
 
