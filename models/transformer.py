@@ -1,9 +1,13 @@
 """
 Transformer forecasting model.
 """
+import warnings
 import math
 import torch
 import torch.nn as nn
+
+# Suppress warnings
+warnings.filterwarnings('ignore')
 
 class PositionalEncoding(nn.Module):
     """Sinusoidal positional encoding."""

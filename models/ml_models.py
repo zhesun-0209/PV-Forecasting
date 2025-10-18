@@ -2,8 +2,22 @@
 Machine learning regressors with config-driven parameters.
 Uses GPU-accelerated versions for Random Forest and Gradient Boosting.
 """
+import warnings
 import numpy as np
 import torch
+
+# Suppress warnings
+warnings.filterwarnings('ignore')
+warnings.filterwarnings('ignore', category=FutureWarning)
+warnings.filterwarnings('ignore', category=UserWarning)
+warnings.filterwarnings('ignore', category=DeprecationWarning)
+warnings.filterwarnings('ignore', category=RuntimeWarning)
+
+# Suppress library output
+import logging
+logging.getLogger('lightgbm').setLevel(logging.ERROR)
+logging.getLogger('xgboost').setLevel(logging.ERROR)
+logging.getLogger('cuml').setLevel(logging.ERROR)
 
 # Try to import cuML for GPU-accelerated Random Forest and Linear Regression
 GPU_RF_AVAILABLE = False
@@ -15,14 +29,14 @@ try:
     from cuml.linear_model import LinearRegression as cuLinearRegression
     GPU_RF_AVAILABLE = True
     GPU_LINEAR_AVAILABLE = True
-    print("cuML available (GPU-accelerated Random Forest and Linear Regression)")
+    # cuML available (GPU-accelerated Random Forest and Linear Regression)
 except Exception:
     # Silently fallback to sklearn
     from sklearn.ensemble import RandomForestRegressor as cuRandomForestRegressor
     from sklearn.linear_model import LinearRegression as cuLinearRegression
     GPU_RF_AVAILABLE = False
     GPU_LINEAR_AVAILABLE = False
-    print("Using sklearn (CPU) for Random Forest and Linear Regression")
+    # Using sklearn (CPU) for Random Forest and Linear Regression
 
 # Check XGBoost GPU support
 XGB_GPU_AVAILABLE = False
@@ -32,37 +46,60 @@ try:
     try:
         test_model = xgb.XGBRegressor(tree_method='gpu_hist', device='cuda', n_estimators=1)
         XGB_GPU_AVAILABLE = True
-        print("XGBoost GPU available")
+        # XGBoost GPU available
     except:
-        print("XGBoost GPU unavailable, using CPU version")
+        # XGBoost GPU unavailable, using CPU version
+        pass
 except ImportError:
-    print("XGBoost unavailable")
+    # XGBoost unavailable
+    pass
 
 # Check LightGBM GPU support
 LGB_GPU_AVAILABLE = False
 try:
-    import lightgbm as lgb
-    import numpy as np
-    from sklearn.multioutput import MultiOutputRegressor
-    # Test LightGBM GPU support
+    # Suppress LightGBM import warnings and output
+    import warnings
+    import os
+    import sys
+    from io import StringIO
+    
+    # Redirect stderr to suppress LightGBM output
+    old_stderr = sys.stderr
+    sys.stderr = StringIO()
+    
     try:
-        # Create test data
-        X_test = np.random.rand(10, 5)
-        y_test = np.random.rand(10, 24)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            import lightgbm as lgb
+        import numpy as np
+        from sklearn.multioutput import MultiOutputRegressor
         
-        # Test GPU training
-        base = lgb.LGBMRegressor(device='gpu', gpu_platform_id=0, gpu_device_id=0, n_estimators=1, verbose=-1)
-        model = MultiOutputRegressor(base)
-        model.fit(X_test, y_test)
-        LGB_GPU_AVAILABLE = True
-        print("LightGBM GPU available")  # LightGBM GPU available
-    except Exception as e:
-        if "GPU Tree Learner was not enabled" in str(e):
-            print("LightGBM GPU unavailable - needs recompilation with GPU support")  # LightGBM GPU unavailable - needs recompilation with GPU support
-        else:
-            print(f"LightGBM GPU unavailable: {e}")  # LightGBM GPU unavailable: {e}
+        # Test LightGBM GPU support
+        try:
+            # Create test data
+            X_test = np.random.rand(10, 5)
+            y_test = np.random.rand(10, 24)
+            
+            # Test GPU training
+            base = lgb.LGBMRegressor(device='gpu', gpu_platform_id=0, gpu_device_id=0, n_estimators=1, verbose=-1)
+            model = MultiOutputRegressor(base)
+            model.fit(X_test, y_test)
+            LGB_GPU_AVAILABLE = True
+            # LightGBM GPU available
+        except Exception as e:
+            if "GPU Tree Learner was not enabled" in str(e):
+                # LightGBM GPU unavailable - needs recompilation with GPU support
+                pass
+            else:
+                # LightGBM GPU unavailable: {e}
+                pass
+    finally:
+        # Restore stderr
+        sys.stderr = old_stderr
+        
 except ImportError:
-    print("LightGBM unavailable")  # LightGBM unavailable
+    # LightGBM unavailable
+    pass
 
 from sklearn.multioutput import MultiOutputRegressor
 from xgboost import XGBRegressor

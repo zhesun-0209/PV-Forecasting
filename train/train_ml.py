@@ -1,7 +1,12 @@
 import os
 import time
+import warnings
 import joblib
 import numpy as np
+
+# Suppress warnings
+warnings.filterwarnings('ignore')
+os.environ['PYTHONWARNINGS'] = 'ignore'
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 from sklearn.linear_model import LinearRegression
 from eval.metrics_utils import calculate_metrics, calculate_mse, calculate_daily_avg_metrics

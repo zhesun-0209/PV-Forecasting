@@ -1,8 +1,12 @@
 """
 RNN forecasting models: LSTM & GRU.
 """
+import warnings
 import torch
 import torch.nn as nn
+
+# Suppress warnings
+warnings.filterwarnings('ignore')
 
 class RNNBase(nn.Module):
     def __init__(self, hist_dim: int, fcst_dim: int, config: dict, rnn_type: str = 'LSTM'):                                                                             

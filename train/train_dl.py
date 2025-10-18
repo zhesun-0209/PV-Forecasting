@@ -9,8 +9,13 @@ Records per-epoch timing and validation loss over time for plotting.
 
 import time
 import os
+import warnings
 import torch
 import numpy as np
+
+# Suppress warnings
+warnings.filterwarnings('ignore')
+os.environ['PYTHONWARNINGS'] = 'ignore'
 from torch.utils.data import DataLoader, TensorDataset
 from train.train_utils import (
     get_optimizer, get_scheduler,

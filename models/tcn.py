@@ -1,6 +1,10 @@
+import warnings
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
+# Suppress warnings
+warnings.filterwarnings('ignore')
 
 class TemporalBlock(nn.Module):
     """TCN basic block, contains dilated convolution, residual connection and layer normalization"""

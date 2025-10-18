@@ -10,6 +10,51 @@ import sys
 import pandas as pd
 import numpy as np
 from typing import List, Dict, Tuple
+import warnings
+
+# Suppress all warnings
+warnings.filterwarnings('ignore')
+
+# Suppress specific library warnings
+warnings.filterwarnings('ignore', category=FutureWarning)
+warnings.filterwarnings('ignore', category=UserWarning)
+warnings.filterwarnings('ignore', category=DeprecationWarning)
+warnings.filterwarnings('ignore', category=RuntimeWarning)
+
+# Suppress pandas warnings
+warnings.filterwarnings('ignore', module='pandas')
+
+# Suppress numpy warnings
+warnings.filterwarnings('ignore', module='numpy')
+
+# Suppress sklearn warnings
+warnings.filterwarnings('ignore', module='sklearn')
+
+# Suppress XGBoost warnings
+warnings.filterwarnings('ignore', module='xgboost')
+
+# Suppress LightGBM warnings
+warnings.filterwarnings('ignore', module='lightgbm')
+
+# Suppress cuML warnings
+warnings.filterwarnings('ignore', module='cuml')
+
+# Suppress PyTorch warnings
+warnings.filterwarnings('ignore', module='torch')
+
+# Set environment variables to suppress warnings
+os.environ['PYTHONWARNINGS'] = 'ignore'
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # Suppress TensorFlow warnings
+
+# Suppress specific library output
+import logging
+logging.getLogger('lightgbm').setLevel(logging.ERROR)
+logging.getLogger('xgboost').setLevel(logging.ERROR)
+logging.getLogger('cuml').setLevel(logging.ERROR)
+
+# Suppress LightGBM initialization output
+import os
+os.environ['LIGHTGBM_VERBOSE'] = '0'
 
 # Add parent directory to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
