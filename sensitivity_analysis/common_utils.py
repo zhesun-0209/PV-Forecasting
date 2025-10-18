@@ -398,8 +398,53 @@ def load_all_plant_configs(data_dir: str = 'data') -> List[Dict]:
             'weather_category': 'all_weather',
             'start_date': '2022-01-01',
             'end_date': '2024-09-28',
-            # DL parameters - high complexity
+            # DL parameters - 与multiplant保持一致
             'dl_params': {
+                'low': {
+                    'epochs': 20,
+                    'batch_size': 64,
+                    'learning_rate': 0.001,
+                    'patience': 10,
+                    'min_delta': 0.001,
+                    'weight_decay': 0.0001,
+                    'd_model': 16,
+                    'hidden_dim': 8,
+                    'num_heads': 2,
+                    'num_layers': 1,
+                    'dropout': 0.1,
+                    'tcn_channels': [8, 16],
+                    'kernel_size': 3
+                },
+                'mid_low': {
+                    'epochs': 35,
+                    'batch_size': 64,
+                    'learning_rate': 0.001,
+                    'patience': 10,
+                    'min_delta': 0.001,
+                    'weight_decay': 0.0001,
+                    'd_model': 24,
+                    'hidden_dim': 12,
+                    'num_heads': 2,
+                    'num_layers': 1,
+                    'dropout': 0.1,
+                    'tcn_channels': [12, 24],
+                    'kernel_size': 3
+                },
+                'mid_high': {
+                    'epochs': 50,
+                    'batch_size': 64,
+                    'learning_rate': 0.001,
+                    'patience': 10,
+                    'min_delta': 0.001,
+                    'weight_decay': 0.0001,
+                    'd_model': 28,
+                    'hidden_dim': 14,
+                    'num_heads': 2,
+                    'num_layers': 1,
+                    'dropout': 0.1,
+                    'tcn_channels': [14, 28],
+                    'kernel_size': 3
+                },
                 'high': {
                     'epochs': 50,
                     'batch_size': 64,
@@ -416,14 +461,35 @@ def load_all_plant_configs(data_dir: str = 'data') -> List[Dict]:
                     'kernel_size': 3
                 }
             },
-            # ML parameters - high complexity
+            # ML parameters - 与multiplant保持一致
             'ml_params': {
+                'low': {
+                    'n_estimators': 10,
+                    'max_depth': 1,
+                    'learning_rate': 0.2,
+                    'random_state': 42,
+                    'verbosity': -1
+                },
+                'mid_low': {
+                    'n_estimators': 20,
+                    'max_depth': 2,
+                    'learning_rate': 0.15,
+                    'random_state': 42,
+                    'verbosity': -1
+                },
+                'mid_high': {
+                    'n_estimators': 25,
+                    'max_depth': 2,
+                    'learning_rate': 0.12,
+                    'random_state': 42,
+                    'verbosity': -1
+                },
                 'high': {
-                    'n_estimators': 200,
-                    'max_depth': 10,
+                    'n_estimators': 30,
+                    'max_depth': 3,
                     'learning_rate': 0.1,
-                    'min_samples_split': 5,
-                    'min_samples_leaf': 2
+                    'random_state': 42,
+                    'verbosity': -1
                 }
             }
         }

@@ -111,23 +111,23 @@ def create_complexity_config(plant_config, model, complexity, lookback=24, use_t
     elif model in ML_MODELS:
         if complexity == 'low':
             config['model_params'] = {
-                'n_estimators': 50, 'max_depth': 5, 'learning_rate': 0.1,
-                'min_samples_split': 10, 'min_samples_leaf': 5
+                'n_estimators': 10, 'max_depth': 1, 'learning_rate': 0.2,
+                'random_state': 42, 'verbosity': -1
             }
         elif complexity == 'mid_low':
             config['model_params'] = {
-                'n_estimators': 100, 'max_depth': 7, 'learning_rate': 0.1,
-                'min_samples_split': 7, 'min_samples_leaf': 3
+                'n_estimators': 20, 'max_depth': 2, 'learning_rate': 0.15,
+                'random_state': 42, 'verbosity': -1
             }
         elif complexity == 'mid_high':
             config['model_params'] = {
-                'n_estimators': 150, 'max_depth': 10, 'learning_rate': 0.1,
-                'min_samples_split': 5, 'min_samples_leaf': 2
+                'n_estimators': 25, 'max_depth': 2, 'learning_rate': 0.12,
+                'random_state': 42, 'verbosity': -1
             }
         else:  # high
             config['model_params'] = {
-                'n_estimators': 200, 'max_depth': 10, 'learning_rate': 0.1,
-                'min_samples_split': 5, 'min_samples_leaf': 2
+                'n_estimators': 30, 'max_depth': 3, 'learning_rate': 0.1,
+                'random_state': 42, 'verbosity': -1
             }
     
     return config
