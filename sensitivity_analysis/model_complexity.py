@@ -93,7 +93,7 @@ def create_complexity_config(plant_config, model, complexity, lookback=24, use_t
                 'patience': 10, 'min_delta': 0.001, 'weight_decay': 0.0001
             }
             config['model_params'] = {
-                'd_model': 32, 'hidden_dim': 16, 'num_heads': 2, 'num_layers': 2, 'dropout': 0.1
+                'd_model': 28, 'hidden_dim': 14, 'num_heads': 2, 'num_layers': 1, 'dropout': 0.1
             }
         else:  # high
             config['train_params'] = {
@@ -251,8 +251,8 @@ def run_model_complexity_analysis(data_dir: str = 'data', output_dir: str = 'sen
     )
     agg_df = agg_df.sort_values(['complexity', 'model'])
     
-    # Pivot table
-    pivot_df = agg_df.pivot(index='complexity', columns='model')
+    # Create formatted pivot tables with mean±std format
+    formatted_pivots = create_formatted_pivot(agg_df, 'complexity', ['mae', 'rmse', 'r2', 'nrmse', 'train_time'])
     
     # Save results with model ordering and local backup
     os.makedirs(output_dir, exist_ok=True)
@@ -265,9 +265,10 @@ def run_model_complexity_analysis(data_dir: str = 'data', output_dir: str = 'sen
     output_file_agg = os.path.join(output_dir, 'model_complexity_aggregated.csv')
     save_results(agg_df, output_file_agg, local_output_dir, 'model_complexity')
     
-    # Save pivot table
-    output_file_pivot = os.path.join(output_dir, 'model_complexity_pivot.csv')
-    save_results(pivot_df, output_file_pivot, local_output_dir, 'model_complexity')
+    # Save formatted pivot tables for each metric
+    for metric, pivot_df in formatted_pivots.items():
+        output_file_pivot = os.path.join(output_dir, f'model_complexity_pivot_{metric}.csv')
+        save_results(pivot_df, output_file_pivot, local_output_dir, 'model_complexity')
     
     # Print summary
     print("\n" + "=" * 80)

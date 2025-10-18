@@ -204,8 +204,8 @@ def run_weather_feature_analysis(data_dir: str = 'data', output_dir: str = 'sens
     agg_df['feature_tier'] = pd.Categorical(agg_df['feature_tier'], categories=tier_order, ordered=True)
     agg_df = agg_df.sort_values(['feature_tier', 'model'])
     
-    # Pivot table for better visualization
-    pivot_df = agg_df.pivot(index='feature_tier', columns='model')
+    # Create formatted pivot tables with mean±std format
+    formatted_pivots = create_formatted_pivot(agg_df, 'feature_tier', ['mae', 'rmse', 'r2', 'nrmse', 'train_time'])
     
     # Save results
     os.makedirs(output_dir, exist_ok=True)
@@ -218,9 +218,10 @@ def run_weather_feature_analysis(data_dir: str = 'data', output_dir: str = 'sens
     output_file_agg = os.path.join(output_dir, 'weather_feature_adoption_aggregated.csv')
     save_results(agg_df, output_file_agg, local_output_dir, 'weather_feature_adoption')
     
-    # Save pivot table
-    output_file_pivot = os.path.join(output_dir, 'weather_feature_adoption_pivot.csv')
-    save_results(pivot_df, output_file_pivot, local_output_dir, 'weather_feature_adoption')
+    # Save formatted pivot tables for each metric
+    for metric, pivot_df in formatted_pivots.items():
+        output_file_pivot = os.path.join(output_dir, f'weather_feature_adoption_pivot_{metric}.csv')
+        save_results(pivot_df, output_file_pivot, local_output_dir, 'weather_feature_adoption')
     
     # Print summary
     print("\n" + "=" * 80)
