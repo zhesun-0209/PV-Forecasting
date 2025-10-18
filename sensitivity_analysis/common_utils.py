@@ -243,8 +243,7 @@ def run_single_experiment(config: Dict, df: pd.DataFrame, use_sliding_windows: b
         val_idx = indices[train_size:train_size + val_size]
         test_idx = indices[train_size + val_size:]
         
-        print(f"  Data split: Train={len(train_idx)}, Val={len(val_idx)}, Test={len(test_idx)}")
-        print(f"  Test period: {dates[test_idx[0]]} to {dates[test_idx[-1]]}")
+        # Removed verbose data split and test period output
         
         X_hist_train, y_train = X_hist[train_idx], y[train_idx]
         X_hist_val, y_val = X_hist[val_idx], y[val_idx]

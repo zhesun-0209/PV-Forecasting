@@ -32,7 +32,7 @@ def extract_one_hour_ahead_predictions(predictions, ground_truth):
     final_gt = ground_truth.flatten()
     
     n_days = len(predictions)
-    print(f"  Day-ahead evaluation: {n_days} daily predictions ({len(final_preds)} hourly values)")
+    # Removed verbose day-ahead evaluation output
     
     return final_preds, final_gt
 

@@ -194,7 +194,7 @@ def train_dl_model(
         
         # Early stopping
         if patience_counter >= patience:
-            print(f"Early stopped at epoch {ep}, val loss: {val_loss:.4f}")
+            # Removed verbose early stopping output
             break
 
     # Test phase

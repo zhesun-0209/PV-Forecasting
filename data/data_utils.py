@@ -88,12 +88,10 @@ def preprocess_features(df: pd.DataFrame, config: dict):
     if start_date:
         start_dt = pd.to_datetime(start_date)
         df_clean = df_clean[df_clean['Datetime'] >= start_dt].copy()
-        print(f"Filtered data (starting from {start_date}): {len(df_clean)} rows")
     
     if end_date:
         end_dt = pd.to_datetime(end_date)
         df_clean = df_clean[df_clean['Datetime'] <= end_dt].copy()
-        print(f"Filtered data (ending at {end_date}): {len(df_clean)} rows")
 
     # Add time encoding features (based on switch)
     use_time_encoding = config.get('use_time_encoding', True)
