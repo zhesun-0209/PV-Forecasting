@@ -197,7 +197,7 @@ def run_seasonal_analysis(data_dir: str = 'data', output_dir: str = 'sensitivity
             agg_df[col] = agg_df[col].round(2)
     
     # Create formatted pivot tables with mean±std format
-    formatted_pivots = create_formatted_pivot(agg_df, 'season', ['mae', 'rmse', 'r2', 'nrmse'])
+    formatted_pivots = create_formatted_pivot(agg_df, 'season', ['mae', 'rmse', 'r2', 'nrmse', 'train_time'])
     
     # Save results with model ordering and local backup
     os.makedirs(output_dir, exist_ok=True)

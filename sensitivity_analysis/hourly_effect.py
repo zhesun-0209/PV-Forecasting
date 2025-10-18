@@ -183,7 +183,7 @@ def run_hourly_analysis(data_dir: str = 'data', output_dir: str = 'sensitivity_a
     for col in agg_df.columns:
         if col not in ['hour', 'model', 'n_plants']:
             agg_df[col] = agg_df[col].round(2)    # Create formatted pivot tables with mean±std format
-    formatted_pivots = create_formatted_pivot(agg_df, 'hour', ['mae', 'rmse', 'r2', 'nrmse'])
+    formatted_pivots = create_formatted_pivot(agg_df, 'hour', ['mae', 'rmse', 'r2', 'nrmse', 'train_time'])
     
     # Save results with model ordering and local backup
     os.makedirs(output_dir, exist_ok=True)
