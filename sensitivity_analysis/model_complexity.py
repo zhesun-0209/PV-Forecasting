@@ -77,7 +77,8 @@ def create_complexity_config(plant_config, model, complexity, lookback=24, use_t
                 'patience': 10, 'min_delta': 0.001, 'weight_decay': 0.0001
             }
             config['model_params'] = {
-                'd_model': 16, 'hidden_dim': 8, 'num_heads': 2, 'num_layers': 1, 'dropout': 0.1
+                'd_model': 16, 'hidden_dim': 8, 'num_heads': 2, 'num_layers': 1, 'dropout': 0.1,
+                'tcn_channels': [8, 16], 'kernel_size': 3
             }
         elif complexity == 'mid_low':
             config['train_params'] = {
@@ -85,7 +86,8 @@ def create_complexity_config(plant_config, model, complexity, lookback=24, use_t
                 'patience': 10, 'min_delta': 0.001, 'weight_decay': 0.0001
             }
             config['model_params'] = {
-                'd_model': 24, 'hidden_dim': 12, 'num_heads': 2, 'num_layers': 1, 'dropout': 0.1
+                'd_model': 24, 'hidden_dim': 12, 'num_heads': 2, 'num_layers': 1, 'dropout': 0.1,
+                'tcn_channels': [12, 24], 'kernel_size': 3
             }
         elif complexity == 'mid_high':
             config['train_params'] = {
@@ -93,7 +95,8 @@ def create_complexity_config(plant_config, model, complexity, lookback=24, use_t
                 'patience': 10, 'min_delta': 0.001, 'weight_decay': 0.0001
             }
             config['model_params'] = {
-                'd_model': 28, 'hidden_dim': 14, 'num_heads': 2, 'num_layers': 1, 'dropout': 0.1
+                'd_model': 28, 'hidden_dim': 14, 'num_heads': 2, 'num_layers': 1, 'dropout': 0.1,
+                'tcn_channels': [14, 28], 'kernel_size': 3
             }
         else:  # high
             config['train_params'] = {
@@ -101,7 +104,8 @@ def create_complexity_config(plant_config, model, complexity, lookback=24, use_t
                 'patience': 10, 'min_delta': 0.001, 'weight_decay': 0.0001
             }
             config['model_params'] = {
-                'd_model': 32, 'hidden_dim': 16, 'num_heads': 2, 'num_layers': 2, 'dropout': 0.1
+                'd_model': 32, 'hidden_dim': 16, 'num_heads': 2, 'num_layers': 2, 'dropout': 0.1,
+                'tcn_channels': [16, 32], 'kernel_size': 3
             }
             
     elif model in ML_MODELS:
