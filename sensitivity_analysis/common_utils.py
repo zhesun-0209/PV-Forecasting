@@ -389,22 +389,41 @@ def load_all_plant_configs(data_dir: str = 'data') -> List[Dict]:
     return plant_configs
 
 
-def save_results(results_df: pd.DataFrame, output_file: str):
+def save_results(results_df: pd.DataFrame, output_file: str, local_output_dir: str = None):
     """
-    Save results to CSV file
+    Save results to CSV file with model ordering and local backup
     
     Args:
         results_df: Results DataFrame
-        output_file: Output CSV file path
+        output_file: Output CSV file path (usually Google Drive)
+        local_output_dir: Local output directory for backup (optional)
     """
+    # Define model order: LSR (if exists) RF XGB LGBM LSTM GRU TCN Transformer
+    model_order = ['Linear', 'RF', 'XGB', 'LGBM', 'LSTM', 'GRU', 'TCN', 'Transformer']
+    
+    # Sort results by model order if 'model' column exists
+    if 'model' in results_df.columns:
+        # Create a categorical column for proper sorting
+        results_df['model'] = pd.Categorical(results_df['model'], categories=model_order, ordered=True)
+        results_df = results_df.sort_values('model')
+        # Convert back to string
+        results_df['model'] = results_df['model'].astype(str)
+    
     # Create output directory if needed
     output_dir = os.path.dirname(output_file)
     if output_dir and not os.path.exists(output_dir):
         os.makedirs(output_dir, exist_ok=True)
     
-    # Save to CSV
+    # Save to primary location (usually Google Drive)
     results_df.to_csv(output_file, index=True, encoding='utf-8-sig')
     print(f"\nResults saved to: {output_file}")
+    
+    # Also save to local directory if specified
+    if local_output_dir:
+        local_output_file = os.path.join(local_output_dir, os.path.basename(output_file))
+        os.makedirs(local_output_dir, exist_ok=True)
+        results_df.to_csv(local_output_file, index=True, encoding='utf-8-sig')
+        print(f"Local backup saved to: {local_output_file}")
 
 
 def run_experiments_for_plants(plant_configs: List[Dict], models: List[str], 

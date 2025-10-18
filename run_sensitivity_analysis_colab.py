@@ -102,7 +102,7 @@ def create_output_directory(output_dir):
         return False
 
 
-def run_experiment(exp_num, exp_name, exp_module, data_dir, output_dir):
+def run_experiment(exp_num, exp_name, exp_module, data_dir, output_dir, local_output_dir):
     """Run a single sensitivity analysis experiment"""
     print("\n" + "=" * 80)
     print(f"Experiment {exp_num}/8: {exp_name}")
@@ -115,7 +115,7 @@ def run_experiment(exp_num, exp_name, exp_module, data_dir, output_dir):
         return False
     
     # Show command being run
-    print(f"Running command: python {script_path} --data-dir {data_dir} --output-dir {output_dir}")
+    print(f"Running command: python {script_path} --data-dir {data_dir} --output-dir {output_dir} --local-output {local_output_dir}")
     print(f"Start time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print()
     
@@ -124,7 +124,7 @@ def run_experiment(exp_num, exp_name, exp_module, data_dir, output_dir):
     try:
         # Run experiment using subprocess with real-time output
         result = subprocess.run(
-            ['python', script_path, '--data-dir', data_dir, '--output-dir', output_dir],
+            ['python', script_path, '--data-dir', data_dir, '--output-dir', output_dir, '--local-output', local_output_dir],
             capture_output=False,  # Show real-time output
             text=True
         )
@@ -203,8 +203,12 @@ Examples:
     else:
         output_dir = "sensitivity_analysis/results"
     
+    # Always set up local backup directory
+    local_output_dir = "sensitivity_analysis/results"
+    
     print(f"\nData directory: {args.data_dir}")
     print(f"Output directory: {output_dir}")
+    print(f"Local backup directory: {local_output_dir}")
     
     # Check data directory
     print("\n" + "=" * 80)
@@ -257,7 +261,7 @@ Examples:
         
         print(f"\n[{i}/{len(experiments_to_run)}] Starting: {exp_name}...")
         
-        success = run_experiment(exp_num, exp_name, exp_module, args.data_dir, output_dir)
+        success = run_experiment(exp_num, exp_name, exp_module, args.data_dir, output_dir, local_output_dir)
         
         results[exp_num] = {
             'name': exp_name,

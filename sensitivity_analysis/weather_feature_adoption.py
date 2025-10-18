@@ -28,7 +28,8 @@ from sensitivity_analysis.common_utils import (
     compute_nrmse,
     create_base_config,
     load_all_plant_configs
-)
+),
+    save_results
 from data.data_utils import load_raw_data, preprocess_features, create_daily_windows, split_data
 
 
@@ -41,7 +42,7 @@ FEATURE_TIERS = {
 }
 
 
-def run_weather_feature_analysis(data_dir: str = 'data', output_dir: str = 'sensitivity_analysis/results'):
+def run_weather_feature_analysis(data_dir: str = 'data', output_dir: str = 'sensitivity_analysis/results'), local_output_dir: str = None:
     """
     Run weather feature adoption analysis across all plants
     
@@ -209,19 +210,16 @@ def run_weather_feature_analysis(data_dir: str = 'data', output_dir: str = 'sens
     os.makedirs(output_dir, exist_ok=True)
     
     # Save detailed results
-    output_file_detailed = os.path.join(output_dir, 'weather_feature_adoption_detailed.csv')
-    results_df.to_csv(output_file_detailed, index=False, encoding='utf-8-sig')
-    print(f"\nDetailed results saved to: {output_file_detailed}")
+    output_file_detailed = os.path.join(output_dir, \'weather_feature_adoption_detailed.csv\')
+    save_results(results_df, output_file_detailed, local_output_dir)
     
     # Save aggregated results
-    output_file_agg = os.path.join(output_dir, 'weather_feature_adoption_aggregated.csv')
-    agg_df.to_csv(output_file_agg, index=False, encoding='utf-8-sig')
-    print(f"Aggregated results saved to: {output_file_agg}")
+    output_file_agg = os.path.join(output_dir, \'weather_feature_adoption_aggregated.csv\')
+    save_results(agg_df, output_file_agg, local_output_dir)
     
     # Save pivot table
-    output_file_pivot = os.path.join(output_dir, 'weather_feature_adoption_pivot.csv')
-    pivot_df.to_csv(output_file_pivot, encoding='utf-8-sig')
-    print(f"Pivot table saved to: {output_file_pivot}")
+    output_file_pivot = os.path.join(output_dir, \'weather_feature_adoption_pivot.csv\')
+    save_results(pivot_df, output_file_pivot, local_output_dir)
     
     # Print summary
     print("\n" + "=" * 80)
@@ -243,8 +241,10 @@ if __name__ == '__main__':
                        help='Directory containing plant CSV files')
     parser.add_argument('--output-dir', type=str, default='sensitivity_analysis/results',
                        help='Directory to save results')
+    parser.add_argument(\'--local-output\', type=str, default=None,
+                       help=\'Local backup directory for results\')
     
     args = parser.parse_args()
     
-    run_weather_feature_analysis(data_dir=args.data_dir, output_dir=args.output_dir)
+    run_weather_feature_analysis(data_dir=args.data_dir, output_dir=args.output_dir), local_output_dir=args.local_output
 

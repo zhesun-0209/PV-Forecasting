@@ -28,7 +28,7 @@ from sensitivity_analysis.common_utils import (
 from data.data_utils import load_raw_data, preprocess_features, create_daily_windows, split_data
 
 
-def run_seasonal_analysis(data_dir: str = 'data', output_dir: str = 'sensitivity_analysis/results'):
+def run_seasonal_analysis(data_dir: str = 'data', output_dir: str = 'sensitivity_analysis/results', local_output_dir: str = None):
     """
     Run seasonal effect analysis across all plants
     
@@ -199,23 +199,20 @@ def run_seasonal_analysis(data_dir: str = 'data', output_dir: str = 'sensitivity
     # Pivot table for better visualization
     pivot_df = agg_df.pivot(index='season', columns='model')
     
-    # Save results
+    # Save results with model ordering and local backup
     os.makedirs(output_dir, exist_ok=True)
     
     # Save detailed results
     output_file_detailed = os.path.join(output_dir, 'seasonal_effect_detailed.csv')
-    results_df.to_csv(output_file_detailed, index=False, encoding='utf-8-sig')
-    print(f"\nDetailed results saved to: {output_file_detailed}")
+    save_results(results_df, output_file_detailed, local_output_dir)
     
     # Save aggregated results
     output_file_agg = os.path.join(output_dir, 'seasonal_effect_aggregated.csv')
-    agg_df.to_csv(output_file_agg, index=False, encoding='utf-8-sig')
-    print(f"Aggregated results saved to: {output_file_agg}")
+    save_results(agg_df, output_file_agg, local_output_dir)
     
     # Save pivot table
     output_file_pivot = os.path.join(output_dir, 'seasonal_effect_pivot.csv')
-    pivot_df.to_csv(output_file_pivot, encoding='utf-8-sig')
-    print(f"Pivot table saved to: {output_file_pivot}")
+    save_results(pivot_df, output_file_pivot, local_output_dir)
     
     # Print summary
     print("\n" + "=" * 80)
@@ -237,8 +234,10 @@ if __name__ == '__main__':
                        help='Directory containing plant CSV files')
     parser.add_argument('--output-dir', type=str, default='sensitivity_analysis/results',
                        help='Directory to save results')
+    parser.add_argument('--local-output', type=str, default=None,
+                       help='Local backup directory for results')
     
     args = parser.parse_args()
     
-    run_seasonal_analysis(data_dir=args.data_dir, output_dir=args.output_dir)
+    run_seasonal_analysis(data_dir=args.data_dir, output_dir=args.output_dir, local_output_dir=args.local_output)
 
