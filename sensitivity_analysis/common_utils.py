@@ -155,8 +155,6 @@ def run_single_experiment(config: Dict, df: pd.DataFrame, use_sliding_windows: b
     import time
     
     try:
-        start_time = time.time()
-        
         # Step 1: Preprocess features (returns processed df and scalers)
         df_clean, hist_feats, fcst_feats, scaler_hist, scaler_fcst, scaler_target, no_hist_power = preprocess_features(df, config)
         
