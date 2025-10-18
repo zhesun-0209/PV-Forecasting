@@ -195,6 +195,19 @@ def run_model_complexity_analysis(data_dir: str = 'data', output_dir: str = 'sen
                     nrmse = result.get('nrmse', compute_nrmse(result['y_test'].flatten(), result['y_test_pred'].flatten()))
                     train_time = result['train_time']
                     test_samples = result['test_samples']
+                    
+                    # Store result
+                    all_results.append({
+                        'plant_id': plant_id,
+                        'model': model,
+                        'complexity': complexity,
+                        'mae': mae,
+                        'rmse': rmse,
+                        'r2': r2,
+                        'nrmse': nrmse,
+                        'train_time': train_time,
+                        'test_samples': test_samples
+                    })
 
                 except Exception as e:
                     print(f"  Error running {model} - {complexity}: {e}")
