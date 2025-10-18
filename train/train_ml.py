@@ -172,7 +172,7 @@ def train_ml_model(
         'mse':            mse,
         'rmse':           rmse,  # Daily averaged RMSE
         'mae':            mae,   # Daily averaged MAE
-        'nrmse':          rmse / np.mean(y_matrix[y_matrix > 0]) if np.any(y_matrix > 0) else np.nan,
+        'nrmse':          rmse / (np.max(y_matrix) - np.min(y_matrix)) if np.max(y_matrix) != np.min(y_matrix) else np.nan,
         'r_square':       daily_metrics['r2'],
         'r2':             daily_metrics['r2'],
         'smape':          np.nan,  # Not calculated for daily avg
