@@ -118,7 +118,7 @@ def train_ml_model(
     n_test = len(X_test_flat)
     preds_list = []
     
-    print(f"  Predicting test set: {n_test} samples (batch_size={batch_size})")
+    # Removed verbose prediction output
     
     for i in range(0, n_test, batch_size):
         end_idx = min(i + batch_size, n_test)
@@ -127,7 +127,6 @@ def train_ml_model(
     
     preds_flat = np.vstack(preds_list)
     inference_time = time.time() - inference_start
-    print(f"  Prediction completed in {inference_time:.2f}s")
 
     # Inverse transform using scaler_target
     fh = int(config.get('future_hours', 24))  # Default to 24 if not specified

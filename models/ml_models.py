@@ -134,19 +134,15 @@ def train_rf(X_train, y_train, params: dict):
         from sklearn.multioutput import MultiOutputRegressor
         
         if GPU_RF_AVAILABLE:
-            print(f"Training RF GPU (cuML): n_estimators={n_est}, max_depth={max_d}, samples={len(X_train)}, features={X_train.shape[1]}")
             # cuML works directly with NumPy arrays
             base = cuRandomForestRegressor(**cuml_params)
             model = MultiOutputRegressor(base, n_jobs=1)
             model.fit(X_train, y_train)
-            print("[OK] Random Forest GPU (cuML) training successful")
         else:
-            print(f"Training RF CPU (sklearn): n_estimators={n_est}, max_depth={max_d}, samples={len(X_train)}, features={X_train.shape[1]}")
             # Use sklearn fallback with CPU
             base = cuRandomForestRegressor(**cuml_params)  # Already imported as sklearn RF
             model = MultiOutputRegressor(base, n_jobs=-1)  # Use all CPU cores
             model.fit(X_train, y_train)
-            print("[OK] Random Forest CPU (sklearn) training successful")
         
         return model
         
@@ -175,15 +171,10 @@ def train_xgb(X_train, y_train, params: dict):
         max_d = params.get('max_depth', 3)
         lr = params.get('learning_rate', 0.1)
         
-        print(f"Training XGBoost: n_estimators={n_est}, max_depth={max_d}, lr={lr}")
-        print(f"  Data: samples={len(X_train)}, features={X_train.shape[1]}, outputs={y_train.shape[1]}")
-        print(f"  Total trees to train: {n_est} × {y_train.shape[1]} outputs = {n_est * y_train.shape[1]}")
-        
         # GPU-only version (no CPU fallback)
         if not (torch.cuda.is_available() and XGB_GPU_AVAILABLE):
             raise RuntimeError("XGBoost GPU not available! Cannot train.")
         
-        print("  Using XGBoost GPU (device=cuda)")
         gpu_params = params.copy()
         gpu_params.update({
             'tree_method': 'hist',  # Use histogram algorithm (auto GPU with device='cuda')
@@ -196,14 +187,10 @@ def train_xgb(X_train, y_train, params: dict):
         # Use n_jobs=2 for limited parallelism (train 2 models at a time)
         base = XGBRegressor(**gpu_params)
         
-        print("  Starting training...")
-        print(f"  Note: Training {y_train.shape[1]} output models sequentially to avoid GPU OOM")
         start_time = time.time()
         model = MultiOutputRegressor(base, n_jobs=1)  # Sequential to avoid OOM
         model.fit(X_train, y_train)
         elapsed = time.time() - start_time
-        
-        print(f"[OK] XGBoost training completed in {elapsed:.1f}s ({elapsed/60:.1f}min)")
         return model
         
     except Exception as e:
@@ -229,14 +216,9 @@ def train_lgbm(X_train, y_train, params: dict):
         max_d = params.get('max_depth', 3)
         lr = params.get('learning_rate', 0.1)
         
-        print(f"Training LightGBM: n_estimators={n_est}, max_depth={max_d}, lr={lr}")
-        print(f"  Data: samples={len(X_train)}, features={X_train.shape[1]}, outputs={y_train.shape[1]}")
-        
         # GPU-only version (no CPU fallback)
         if not (torch.cuda.is_available() and LGB_GPU_AVAILABLE):
             raise RuntimeError("LightGBM GPU not available! Cannot train.")
-        
-        print("  Device: GPU")
         
         # Suppress LightGBM warnings
         import warnings
@@ -251,14 +233,10 @@ def train_lgbm(X_train, y_train, params: dict):
         })
         base = LGBMRegressor(**gpu_params)
         
-        print("  Starting training...")
-        print(f"  Note: Training {y_train.shape[1]} output models sequentially to avoid GPU OOM")
         start_time = time.time()
         model = MultiOutputRegressor(base, n_jobs=1)  # Sequential to avoid OOM
         model.fit(X_train, y_train)
         elapsed = time.time() - start_time
-        
-        print(f"[OK] LightGBM training completed in {elapsed:.1f}s ({elapsed/60:.1f}min)")
         return model
         
     except Exception as e:
@@ -282,18 +260,15 @@ def train_linear(X_train, y_train, params: dict):
             # Try GPU version with direct NumPy arrays (cuML compatibility)
             if GPU_LINEAR_AVAILABLE:
                 try:
-                    print("Using Linear Regression GPU (cuML)")
-                    
                     # cuML works directly with NumPy arrays (no cuDF needed!)
                     model = cuLinearRegression()
                     model.fit(X_train, y_train)  # Use NumPy arrays directly
                     return model
                 except Exception as e:
-                    print(f"cuML GPU failed ({e}), falling back to sklearn CPU")
                     # Fall through to CPU version
+                    pass
             
             # CPU version (sklearn)
-            print("Using Linear Regression CPU (sklearn)")
             from sklearn.linear_model import LinearRegression
             model = LinearRegression()
             model.fit(X_train, y_train)
