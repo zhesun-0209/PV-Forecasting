@@ -25,7 +25,7 @@ from sensitivity_analysis.common_utils import (
     create_base_config,
     load_all_plant_configs,
     run_single_experiment,
-    save_results
+    save_results, create_formatted_pivot
 )
 from data.data_utils import load_raw_data, preprocess_features, create_daily_windows, split_data
 
@@ -182,10 +182,8 @@ def run_hourly_analysis(data_dir: str = 'data', output_dir: str = 'sensitivity_a
     # Round to 2 decimals
     for col in agg_df.columns:
         if col not in ['hour', 'model', 'n_plants']:
-            agg_df[col] = agg_df[col].round(2)
-    
-    # Pivot table for better visualization
-    pivot_df = agg_df.pivot(index='hour', columns='model')
+            agg_df[col] = agg_df[col].round(2)    # Create formatted pivot tables with mean±std format
+    formatted_pivots = create_formatted_pivot(agg_df, 'hour', ['mae', 'rmse', 'r2', 'nrmse'])
     
     # Save results with model ordering and local backup
     os.makedirs(output_dir, exist_ok=True)
@@ -198,9 +196,10 @@ def run_hourly_analysis(data_dir: str = 'data', output_dir: str = 'sensitivity_a
     output_file_agg = os.path.join(output_dir, 'hourly_effect_aggregated.csv')
     save_results(agg_df, output_file_agg, local_output_dir)
     
-    # Save pivot table
-    output_file_pivot = os.path.join(output_dir, 'hourly_effect_pivot.csv')
-    save_results(pivot_df, output_file_pivot, local_output_dir)
+    # Save formatted pivot tables for each metric
+    for metric, pivot_df in formatted_pivots.items():
+        output_file_pivot = os.path.join(output_dir, f'hourly_effect_pivot_{metric}.csv')
+        save_results(pivot_df, output_file_pivot, local_output_dir)
     
     # Print summary
     print("\n" + "=" * 80)

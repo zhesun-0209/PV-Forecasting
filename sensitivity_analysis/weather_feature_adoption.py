@@ -29,7 +29,7 @@ from sensitivity_analysis.common_utils import (
     create_base_config,
     load_all_plant_configs,
     run_single_experiment,
-    save_results
+    save_results, create_formatted_pivot
 )
 from data.data_utils import load_raw_data, preprocess_features, create_daily_windows, split_data
 

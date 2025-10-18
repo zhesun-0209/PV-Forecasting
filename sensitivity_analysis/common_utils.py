@@ -424,6 +424,60 @@ def save_results(results_df: pd.DataFrame, output_file: str, local_output_dir: s
         print(f"Local backup saved to: {local_output_file}")
 
 
+def create_formatted_pivot(agg_df: pd.DataFrame, index_col: str, metric_cols: list, 
+                          model_order: list = None) -> pd.DataFrame:
+    """
+    Create a formatted pivot table with mean±std format and proper model ordering
+    
+    Args:
+        agg_df: Aggregated DataFrame with mean and std columns
+        index_col: Column to use as index (e.g., 'season', 'hour', 'lookback_hours')
+        metric_cols: List of metric names (e.g., ['mae', 'rmse', 'r2'])
+        model_order: List of models in desired order
+        
+    Returns:
+        Formatted pivot DataFrame
+    """
+    if model_order is None:
+        model_order = ['Linear', 'RF', 'XGB', 'LGBM', 'LSTM', 'GRU', 'TCN', 'Transformer']
+    
+    # Create formatted pivot for each metric
+    formatted_pivots = {}
+    
+    for metric in metric_cols:
+        mean_col = f'{metric}_mean'
+        std_col = f'{metric}_std'
+        
+        if mean_col in agg_df.columns and std_col in agg_df.columns:
+            # Create pivot with mean values
+            mean_pivot = agg_df.pivot(index=index_col, columns='model', values=mean_col)
+            
+            # Create pivot with std values
+            std_pivot = agg_df.pivot(index=index_col, columns='model', values=std_col)
+            
+            # Reorder columns according to model_order
+            available_models = [m for m in model_order if m in mean_pivot.columns]
+            mean_pivot = mean_pivot[available_models]
+            std_pivot = std_pivot[available_models]
+            
+            # Create formatted strings: mean±std
+            formatted_pivot = mean_pivot.copy()
+            for col in formatted_pivot.columns:
+                for idx in formatted_pivot.index:
+                    mean_val = mean_pivot.loc[idx, col]
+                    std_val = std_pivot.loc[idx, col]
+                    if pd.notna(mean_val) and pd.notna(std_val):
+                        formatted_pivot.loc[idx, col] = f"{mean_val:.2f}±{std_val:.2f}"
+                    elif pd.notna(mean_val):
+                        formatted_pivot.loc[idx, col] = f"{mean_val:.2f}"
+                    else:
+                        formatted_pivot.loc[idx, col] = "N/A"
+            
+            formatted_pivots[metric] = formatted_pivot
+    
+    return formatted_pivots
+
+
 def run_experiments_for_plants(plant_configs: List[Dict], models: List[str], 
                                config_modifier=None, use_sliding_windows=False) -> List[Dict]:
     """
