@@ -143,6 +143,7 @@ def create_base_config(plant_config: Dict, model: str, complexity: str = 'high',
 def run_single_experiment(config: Dict, df: pd.DataFrame, use_sliding_windows: bool = False) -> Dict:
     """
     Run a single experiment with complete data preparation and training
+    Uses the same processing pipeline as multi-plant experiments
     
     Args:
         config: Experiment configuration
@@ -155,12 +156,12 @@ def run_single_experiment(config: Dict, df: pd.DataFrame, use_sliding_windows: b
     import time
     
     try:
-        # Step 1: Preprocess features (returns processed df and scalers)
+        # Data preprocessing (same as multi-plant)
         df_clean, hist_feats, fcst_feats, scaler_hist, scaler_fcst, scaler_target, no_hist_power = preprocess_features(df, config)
         
-        # Step 2: Create windows
+        # Create windows (same as multi-plant)
         if use_sliding_windows:
-            # Hourly sliding windows
+            # Hourly sliding windows for dataset extension experiment
             X_hist, X_fcst, y, hours, dates = create_sliding_windows(
                 df_clean,
                 past_hours=config.get('past_hours', 24),
@@ -170,39 +171,42 @@ def run_single_experiment(config: Dict, df: pd.DataFrame, use_sliding_windows: b
                 no_hist_power=no_hist_power
             )
         else:
-            # Daily windows (default)
+            # Daily windows (default, same as multi-plant)
+            past_hours = config.get('past_hours', 24)
             X_hist, X_fcst, y, hours, dates = create_daily_windows(
-                df_clean,
-                future_hours=config.get('future_hours', 24),
-                hist_feats=hist_feats,
-                fcst_feats=fcst_feats,
-                no_hist_power=no_hist_power,
-                past_hours=config.get('past_hours', 24)
+                df_clean, config['future_hours'], hist_feats, fcst_feats, no_hist_power, past_hours
             )
         
-        # Step 3: Split data
+        # Data splitting (same as multi-plant)
         total_samples = len(X_hist)
         indices = np.arange(total_samples)
         
-        if config.get('shuffle_split', True):
-            np.random.seed(config.get('random_seed', 42))
+        shuffle_split = config.get('shuffle_split', True)
+        random_seed = config.get('random_seed', 42)
+        
+        if shuffle_split:
+            np.random.seed(random_seed)
             np.random.shuffle(indices)
         
-        train_size = int(total_samples * config['train_ratio'])
-        val_size = int(total_samples * config['val_ratio'])
+        train_ratio = config.get('train_ratio', 0.8)
+        val_ratio = config.get('val_ratio', 0.1)
+        
+        train_size = int(total_samples * train_ratio)
+        val_size = int(total_samples * val_ratio)
+        
         train_idx = indices[:train_size]
         val_idx = indices[train_size:train_size + val_size]
         test_idx = indices[train_size + val_size:]
         
-        # Split features
+        print(f"  Data split: Train={len(train_idx)}, Val={len(val_idx)}, Test={len(test_idx)}")
+        print(f"  Test period: {dates[test_idx[0]]} to {dates[test_idx[-1]]}")
+        
         X_hist_train, y_train = X_hist[train_idx], y[train_idx]
         X_hist_val, y_val = X_hist[val_idx], y[val_idx]
         X_hist_test, y_test = X_hist[test_idx], y[test_idx]
         
         if X_fcst is not None:
-            X_fcst_train = X_fcst[train_idx]
-            X_fcst_val = X_fcst[val_idx]
-            X_fcst_test = X_fcst[test_idx]
+            X_fcst_train, X_fcst_val, X_fcst_test = X_fcst[train_idx], X_fcst[val_idx], X_fcst[test_idx]
         else:
             X_fcst_train = X_fcst_val = X_fcst_test = None
         
@@ -212,29 +216,27 @@ def run_single_experiment(config: Dict, df: pd.DataFrame, use_sliding_windows: b
         test_hours = np.array([hours[i] for i in test_idx])
         test_dates = [dates[i] for i in test_idx]
         
-        # Step 4: Prepare data tuples
         train_data = (X_hist_train, X_fcst_train, y_train, train_hours, [])
         val_data = (X_hist_val, X_fcst_val, y_val, val_hours, [])
         test_data = (X_hist_test, X_fcst_test, y_test, test_hours, test_dates)
         scalers = (scaler_hist, scaler_fcst, scaler_target)
         
-        # Step 5: Train model
-        model_name = config['model']
-        train_start_time = time.time()
-        if model_name in DL_MODELS:
+        # Train model (same as multi-plant)
+        start_time = time.time()
+        if config['model'] in ['LSTM', 'GRU', 'Transformer', 'TCN']:
             model, metrics = train_dl_model(config, train_data, val_data, test_data, scalers)
-        else:  # ML models and Linear
+        else:
             model, metrics = train_ml_model(config, train_data, val_data, test_data, scalers)
-        train_time = time.time() - train_start_time
+        training_time = time.time() - start_time
         
         # Return result with predictions
         return {
-            'model': model_name,
+            'model': config['model'],
             'complexity': config.get('model_complexity', 'N/A'),
             'mae': metrics.get('mae', 0.0),
             'rmse': metrics.get('rmse', 0.0),
             'r2': metrics.get('r2', 0.0),
-            'train_time': train_time,
+            'train_time': training_time,
             'test_samples': metrics.get('samples_count', 0),
             'status': 'SUCCESS',
             'y_test_pred': metrics.get('predictions_all', None),  # Full predictions matrix
@@ -387,14 +389,16 @@ def load_all_plant_configs(data_dir: str = 'data') -> List[Dict]:
     return plant_configs
 
 
-def save_results(results_df: pd.DataFrame, output_file: str, local_output_dir: str = None):
+def save_results(results_df: pd.DataFrame, output_file: str, local_output_dir: str = None, experiment_name: str = None):
     """
     Save results to CSV file with model ordering and local backup
+    Creates separate folders for each experiment
     
     Args:
         results_df: Results DataFrame
         output_file: Output CSV file path (usually Google Drive)
         local_output_dir: Local output directory for backup (optional)
+        experiment_name: Name of the experiment (used for folder creation)
     """
     # Define model order: LSR (if exists) RF XGB LGBM LSTM GRU TCN Transformer
     model_order = ['Linear', 'RF', 'XGB', 'LGBM', 'LSTM', 'GRU', 'TCN', 'Transformer']
@@ -407,10 +411,21 @@ def save_results(results_df: pd.DataFrame, output_file: str, local_output_dir: s
         # Convert back to string
         results_df['model'] = results_df['model'].astype(str)
     
-    # Create output directory if needed
-    output_dir = os.path.dirname(output_file)
-    if output_dir and not os.path.exists(output_dir):
-        os.makedirs(output_dir, exist_ok=True)
+    # Create experiment-specific folder
+    if experiment_name:
+        # Extract base directory and create experiment folder
+        base_dir = os.path.dirname(output_file)
+        experiment_dir = os.path.join(base_dir, experiment_name)
+        os.makedirs(experiment_dir, exist_ok=True)
+        
+        # Update output file to be inside experiment folder
+        filename = os.path.basename(output_file)
+        output_file = os.path.join(experiment_dir, filename)
+    else:
+        # Create output directory if needed
+        output_dir = os.path.dirname(output_file)
+        if output_dir and not os.path.exists(output_dir):
+            os.makedirs(output_dir, exist_ok=True)
     
     # Save to primary location (usually Google Drive)
     results_df.to_csv(output_file, index=True, encoding='utf-8-sig')
@@ -418,14 +433,20 @@ def save_results(results_df: pd.DataFrame, output_file: str, local_output_dir: s
     
     # Also save to local directory if specified
     if local_output_dir:
-        local_output_file = os.path.join(local_output_dir, os.path.basename(output_file))
-        os.makedirs(local_output_dir, exist_ok=True)
+        if experiment_name:
+            local_experiment_dir = os.path.join(local_output_dir, experiment_name)
+            os.makedirs(local_experiment_dir, exist_ok=True)
+            local_output_file = os.path.join(local_experiment_dir, os.path.basename(output_file))
+        else:
+            local_output_file = os.path.join(local_output_dir, os.path.basename(output_file))
+            os.makedirs(local_output_dir, exist_ok=True)
+        
         results_df.to_csv(local_output_file, index=True, encoding='utf-8-sig')
         print(f"Local backup saved to: {local_output_file}")
 
 
 def create_formatted_pivot(agg_df: pd.DataFrame, index_col: str, metric_cols: list, 
-                          model_order: list = None) -> pd.DataFrame:
+                          model_order: list = None) -> dict:
     """
     Create a formatted pivot table with mean±std format and proper model ordering
     
@@ -436,7 +457,7 @@ def create_formatted_pivot(agg_df: pd.DataFrame, index_col: str, metric_cols: li
         model_order: List of models in desired order
         
     Returns:
-        Formatted pivot DataFrame
+        Dictionary of formatted pivot DataFrames for each metric
     """
     if model_order is None:
         model_order = ['Linear', 'RF', 'XGB', 'LGBM', 'LSTM', 'GRU', 'TCN', 'Transformer']
@@ -474,6 +495,8 @@ def create_formatted_pivot(agg_df: pd.DataFrame, index_col: str, metric_cols: li
                         formatted_pivot.loc[idx, col] = "N/A"
             
             formatted_pivots[metric] = formatted_pivot
+        else:
+            print(f"Warning: Columns {mean_col} or {std_col} not found in aggregated data")
     
     return formatted_pivots
 

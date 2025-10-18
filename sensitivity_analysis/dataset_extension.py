@@ -172,16 +172,16 @@ def run_dataset_extension_analysis(data_dir: str = 'data', output_dir: str = 'se
         if col not in ['model', 'n_plants', 'avg_windows']:
             agg_df[col] = agg_df[col].round(2)
     
-    # Save results
+    # Save results with model ordering and local backup
     os.makedirs(output_dir, exist_ok=True)
     
+    # Save detailed results
     output_file_detailed = os.path.join(output_dir, 'dataset_extension_detailed.csv')
-    results_df.to_csv(output_file_detailed, index=False, encoding='utf-8-sig')
-    print(f"\nDetailed results saved to: {output_file_detailed}")
+    save_results(results_df, output_file_detailed, local_output_dir, 'dataset_extension')
     
+    # Save aggregated results
     output_file_agg = os.path.join(output_dir, 'dataset_extension_aggregated.csv')
-    agg_df.to_csv(output_file_agg, index=False, encoding='utf-8-sig')
-    print(f"Aggregated results saved to: {output_file_agg}")
+    save_results(agg_df, output_file_agg, local_output_dir, 'dataset_extension')
     
     # Print summary
     print("\n" + "=" * 80)

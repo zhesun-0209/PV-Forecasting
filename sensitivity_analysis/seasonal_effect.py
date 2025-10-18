@@ -204,16 +204,16 @@ def run_seasonal_analysis(data_dir: str = 'data', output_dir: str = 'sensitivity
     
     # Save detailed results
     output_file_detailed = os.path.join(output_dir, 'seasonal_effect_detailed.csv')
-    save_results(results_df, output_file_detailed, local_output_dir)
+    save_results(results_df, output_file_detailed, local_output_dir, 'seasonal_effect')
     
     # Save aggregated results
     output_file_agg = os.path.join(output_dir, 'seasonal_effect_aggregated.csv')
-    save_results(agg_df, output_file_agg, local_output_dir)
+    save_results(agg_df, output_file_agg, local_output_dir, 'seasonal_effect')
     
     # Save formatted pivot tables for each metric
     for metric, pivot_df in formatted_pivots.items():
         output_file_pivot = os.path.join(output_dir, f'seasonal_effect_pivot_{metric}.csv')
-        save_results(pivot_df, output_file_pivot, local_output_dir)
+        save_results(pivot_df, output_file_pivot, local_output_dir, 'seasonal_effect')
     
     # Print summary
     print("\n" + "=" * 80)

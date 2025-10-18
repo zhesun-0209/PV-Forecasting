@@ -158,16 +158,16 @@ def run_lookback_window_analysis(data_dir: str = 'data', output_dir: str = 'sens
     os.makedirs(output_dir, exist_ok=True)
     
     # Save detailed results
-    output_file_detailed = os.path.join(output_dir, \'lookback_window_detailed.csv\')
-    save_results(results_df, output_file_detailed, local_output_dir)
+    output_file_detailed = os.path.join(output_dir, 'lookback_window_detailed.csv')
+    save_results(results_df, output_file_detailed, local_output_dir, 'lookback_window')
     
     # Save aggregated results
-    output_file_agg = os.path.join(output_dir, \'lookback_window_aggregated.csv\')
-    save_results(agg_df, output_file_agg, local_output_dir)
+    output_file_agg = os.path.join(output_dir, 'lookback_window_aggregated.csv')
+    save_results(agg_df, output_file_agg, local_output_dir, 'lookback_window')
     
     # Save pivot table
-    output_file_pivot = os.path.join(output_dir, \'lookback_window_pivot.csv\')
-    save_results(pivot_df, output_file_pivot, local_output_dir)
+    output_file_pivot = os.path.join(output_dir, 'lookback_window_pivot.csv')
+    save_results(pivot_df, output_file_pivot, local_output_dir, 'lookback_window')
     
     # Print summary
     print("\n" + "=" * 80)

@@ -212,15 +212,15 @@ def run_weather_feature_analysis(data_dir: str = 'data', output_dir: str = 'sens
     
     # Save detailed results
     output_file_detailed = os.path.join(output_dir, 'weather_feature_adoption_detailed.csv')
-    save_results(results_df, output_file_detailed, local_output_dir)
+    save_results(results_df, output_file_detailed, local_output_dir, 'weather_feature_adoption')
     
     # Save aggregated results
     output_file_agg = os.path.join(output_dir, 'weather_feature_adoption_aggregated.csv')
-    save_results(agg_df, output_file_agg, local_output_dir)
+    save_results(agg_df, output_file_agg, local_output_dir, 'weather_feature_adoption')
     
     # Save pivot table
     output_file_pivot = os.path.join(output_dir, 'weather_feature_adoption_pivot.csv')
-    save_results(pivot_df, output_file_pivot, local_output_dir)
+    save_results(pivot_df, output_file_pivot, local_output_dir, 'weather_feature_adoption')
     
     # Print summary
     print("\n" + "=" * 80)

@@ -182,20 +182,20 @@ def run_training_scale_analysis(data_dir: str = 'data', output_dir: str = 'sensi
     # Pivot table
     pivot_df = agg_df.pivot(index='training_scale', columns='model')
     
-    # Save results
+    # Save results with model ordering and local backup
     os.makedirs(output_dir, exist_ok=True)
     
+    # Save detailed results
     output_file_detailed = os.path.join(output_dir, 'training_scale_detailed.csv')
-    results_df.to_csv(output_file_detailed, index=False, encoding='utf-8-sig')
-    print(f"\nDetailed results saved to: {output_file_detailed}")
+    save_results(results_df, output_file_detailed, local_output_dir, 'training_scale')
     
+    # Save aggregated results
     output_file_agg = os.path.join(output_dir, 'training_scale_aggregated.csv')
-    agg_df.to_csv(output_file_agg, index=False, encoding='utf-8-sig')
-    print(f"Aggregated results saved to: {output_file_agg}")
+    save_results(agg_df, output_file_agg, local_output_dir, 'training_scale')
     
+    # Save pivot table
     output_file_pivot = os.path.join(output_dir, 'training_scale_pivot.csv')
-    pivot_df.to_csv(output_file_pivot, encoding='utf-8-sig')
-    print(f"Pivot table saved to: {output_file_pivot}")
+    save_results(pivot_df, output_file_pivot, local_output_dir, 'training_scale')
     
     # Print summary
     print("\n" + "=" * 80)
