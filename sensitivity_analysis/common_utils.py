@@ -94,20 +94,20 @@ def get_season(month: int) -> str:
 
 def compute_nrmse(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     """
-    Compute Normalized RMSE (RMSE / mean of true values)
+    Compute Normalized RMSE (RMSE / range of true values)
     
     Args:
         y_true: True values
         y_pred: Predicted values
         
     Returns:
-        NRMSE value
+        NRMSE value (as percentage of data range)
     """
     rmse = np.sqrt(np.mean((y_true - y_pred) ** 2))
-    mean_true = np.mean(y_true)
-    if mean_true == 0:
+    y_range = np.max(y_true) - np.min(y_true)
+    if y_range == 0:
         return np.inf
-    return rmse / mean_true
+    return rmse / y_range
 
 
 def create_base_config(plant_config: Dict, model: str, complexity: str = 'high', 

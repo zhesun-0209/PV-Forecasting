@@ -45,9 +45,9 @@ def calculate_metrics(y_true, y_pred):
     # RMSE
     rmse = np.sqrt(np.mean((y_true_clean - y_pred_clean) ** 2))
     
-    y_mean = np.mean(y_true_clean)
-    if y_mean != 0:
-        nrmse = rmse / y_mean
+    y_range = np.max(y_true_clean) - np.min(y_true_clean)
+    if y_range != 0:
+        nrmse = rmse / y_range
     else:
         nrmse = np.nan
     
